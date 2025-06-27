@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'lock_screen.dart';
+import 'home_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -77,14 +78,14 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
 }
 
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Your Vault")),
-      body: const Center(child: Text("🔐 Vault unlocked!")),
-    );
-  }
-}
+// class HomeScreen extends StatelessWidget {
+//   const HomeScreen({super.key});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: const Text("Your Vault")),
+//       body: const Center(child: Text("🔐 Vault unlocked!")),
+//     );
+//   }
+// }
