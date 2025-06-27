@@ -27,6 +27,8 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   bool _unlocked = false;
+  DateTime? _lastPaused;
+  bool _shouldCheckLock = true; // 👈 new flag
 
   @override
   void initState() {
@@ -43,16 +45,26 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      // App sent to background
-      setState(() {
-        _unlocked = false;
-      });
+      _lastPaused = DateTime.now();
+      _shouldCheckLock = true; // allow next resume to trigger lock check
+    } else if (state == AppLifecycleState.resumed) {
+      if (!_shouldCheckLock) return; // 👈 skip if unlock just happened
+
+      if (_lastPaused != null) {
+        final duration = DateTime.now().difference(_lastPaused!);
+        if (duration.inSeconds > 10) {
+          setState(() {
+            _unlocked = false;
+          });
+        }
+      }
     }
   }
 
   void _onAuthenticated() {
     setState(() {
       _unlocked = true;
+      _shouldCheckLock = false; // 👈 skip lock check on immediate resume
     });
   }
 
