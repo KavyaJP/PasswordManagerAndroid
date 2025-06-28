@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/password_entry.dart';
-import 'dart:math';
 import 'add_entry_screen.dart';
+import 'secure_storage_manager.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,6 +13,26 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final List<PasswordEntry> _entries = [];
   final Set<String> _visiblePasswords = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVault();
+  }
+
+  Future<void> _loadVault() async {
+    final saved = await SecureStorageManager.loadVault();
+    setState(() {
+      _entries.addAll(saved);
+    });
+  }
+
+  Future<void> _addEntry(PasswordEntry entry) async {
+    setState(() {
+      _entries.add(entry);
+    });
+    await SecureStorageManager.saveVault(_entries);
+  }
 
   void _openAddEntryForm() {
     Navigator.push(
@@ -26,23 +46,19 @@ class _HomeScreenState extends State<HomeScreen> {
             String? note,
           }) {
             final id = DateTime.now().millisecondsSinceEpoch.toString();
-            setState(() {
-              _entries.add(
-                PasswordEntry(
-                  id: id,
-                  service: service,
-                  username: username,
-                  password: password,
-                  note: note,
-                ),
-              );
-            });
+            final entry = PasswordEntry(
+              id: id,
+              service: service,
+              username: username,
+              password: password,
+              note: note,
+            );
+            _addEntry(entry);
           },
         ),
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             onPressed: _openAddEntryForm,
             icon: const Icon(Icons.add),
-            tooltip: "Add dummy entry",
+            tooltip: "Add entry",
           )
         ],
       ),
@@ -77,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -124,7 +139,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
               ],
             ),
-
             isThreeLine: entry.note != null && entry.note!.isNotEmpty,
             trailing: IconButton(
               icon: Icon(_visiblePasswords.contains(entry.id)
@@ -140,7 +154,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
               },
             ),
-
           );
         },
       ),

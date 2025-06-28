@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'lock_screen.dart';
 import 'home_screen.dart';
+import 'package:local_auth/local_auth.dart';
 
 void main() {
   runApp(const MyApp());
@@ -35,7 +36,43 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerAuth();
+    });
   }
+
+
+  void _triggerAuth() async {
+    if (!mounted) return;
+
+    // Delay a bit to ensure the app is truly resumed
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Only authenticate if app is in resumed state
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return;
+
+    final localAuth = LocalAuthentication();
+    final canCheck = await localAuth.canCheckBiometrics || await localAuth.isDeviceSupported();
+
+    if (canCheck) {
+      final didAuth = await localAuth.authenticate(
+        localizedReason: 'Please authenticate to access your vault',
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          stickyAuth: true,
+        ),
+      );
+
+      if (didAuth && mounted) {
+        setState(() {
+          _unlocked = true;
+        });
+      }
+    }
+  }
+
+
 
   @override
   void dispose() {
@@ -76,16 +113,3 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
         : LockScreen(onAuthenticated: _onAuthenticated);
   }
 }
-
-
-// class HomeScreen extends StatelessWidget {
-//   const HomeScreen({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: const Text("Your Vault")),
-//       body: const Center(child: Text("🔐 Vault unlocked!")),
-//     );
-//   }
-// }
