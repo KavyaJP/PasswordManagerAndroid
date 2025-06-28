@@ -65,15 +65,67 @@ class _HomeScreenState extends State<HomeScreen> {
           final entry = _entries[index];
           return ListTile(
             leading: const Icon(Icons.vpn_key),
-            title: Text(entry.service),
-            subtitle: Text(
-              _visiblePasswords.contains(entry.id)
-                  ? "${entry.username}\n${entry.password}${entry.note != null ? "\n${entry.note}" : ""}"
-                  : entry.note != null
-                  ? "${entry.username}\n${entry.note}"
-                  : entry.username,
+            title: RichText(
+              text: TextSpan(
+                style: DefaultTextStyle.of(context).style,
+                children: [
+                  const TextSpan(
+                    text: "Service: ",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(text: entry.service),
+                ],
+              ),
             ),
-            isThreeLine: entry.note != null,
+
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                RichText(
+                  text: TextSpan(
+                    style: DefaultTextStyle.of(context).style,
+                    children: [
+                      const TextSpan(
+                        text: "Username: ",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(text: entry.username),
+                    ],
+                  ),
+                ),
+                RichText(
+                  text: TextSpan(
+                    style: DefaultTextStyle.of(context).style,
+                    children: [
+                      const TextSpan(
+                        text: "Password: ",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(
+                        text: _visiblePasswords.contains(entry.id)
+                            ? entry.password
+                            : "••••••••",
+                      ),
+                    ],
+                  ),
+                ),
+                if (entry.note != null && entry.note!.isNotEmpty)
+                  RichText(
+                    text: TextSpan(
+                      style: DefaultTextStyle.of(context).style,
+                      children: [
+                        const TextSpan(
+                          text: "Note: ",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(text: entry.note),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+
+            isThreeLine: entry.note != null && entry.note!.isNotEmpty,
             trailing: IconButton(
               icon: Icon(_visiblePasswords.contains(entry.id)
                   ? Icons.visibility
