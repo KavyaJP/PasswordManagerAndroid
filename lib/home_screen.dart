@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'models/password_entry.dart';
 import 'add_entry_screen.dart';
 import 'secure_storage_manager.dart';
+import 'google_drive_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'drive_backup_manager.dart' as backup;
+import 'google_drive_uploader.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -70,6 +74,25 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _signInWithGoogleDrive() async {
+    final account = await GoogleDriveAuth.signIn();
+    if (!mounted) return; // ← this is the fix
+
+    if (account != null) {
+      final token = await GoogleDriveAuth.getAccessToken();
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Signed in as ${account.email}')),
+      );
+      print('Access Token: $token');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google Sign-In failed')),
+      );
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +100,12 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text("🔐 Your Vault"),
         actions: [
+          // Add Google Drive button here
+          IconButton(
+            icon: const Icon(Icons.cloud_upload),
+            tooltip: 'Sign in to Google Drive',
+            onPressed: _signInWithGoogleDrive,
+          ),
           IconButton(
             onPressed: _openAddEntryForm,
             icon: const Icon(Icons.add),
@@ -84,6 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         ],
       ),
+
       body: _entries.isEmpty
           ? const Center(child: Text("No passwords saved yet."))
           : ListView.builder(
@@ -232,4 +262,30 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     await SecureStorageManager.saveVault(_entries);
   }
+
+  Future<void> _backupToDrive() async {
+    try {
+      final googleUser = await GoogleSignIn(scopes: ['https://www.googleapis.com/auth/drive.file']).signIn();
+      if (googleUser == null) return; // User cancelled
+
+      final auth = await googleUser.authentication;
+      final accessToken = auth.accessToken;
+      if (accessToken == null) throw Exception("Failed to retrieve access token.");
+
+      final file = await backup.VaultBackupManager.createBackupFile(_entries);
+      final success = await GoogleDriveUploader.uploadFileToDrive(
+        accessToken: accessToken,
+        file: file,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(success ? "Backup uploaded to Drive!" : "Upload failed."),
+      ));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Error: ${e.toString()}"),
+      ));
+    }
+  }
+
 }

@@ -1,6 +1,21 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'models/password_entry.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+
+class DriveBackupManager {
+  /// Saves the vault data as a JSON file locally and returns the file path
+  static Future<File> createBackupFile(List<PasswordEntry> entries) async {
+    final directory = await getTemporaryDirectory();
+    final filePath = '${directory.path}/vault_backup.json';
+
+    final json = jsonEncode(entries.map((e) => e.toJson()).toList());
+    final file = File(filePath);
+
+    return file.writeAsString(json);
+  }
+}
 
 class SecureStorageManager {
   static const _storage = FlutterSecureStorage();
