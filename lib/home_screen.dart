@@ -12,6 +12,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final List<PasswordEntry> _entries = [];
+  final Set<String> _visiblePasswords = {};
 
   void _openAddEntryForm() {
     Navigator.push(
@@ -66,12 +67,28 @@ class _HomeScreenState extends State<HomeScreen> {
             leading: const Icon(Icons.vpn_key),
             title: Text(entry.service),
             subtitle: Text(
-              entry.note != null
+              _visiblePasswords.contains(entry.id)
+                  ? "${entry.username}\n${entry.password}${entry.note != null ? "\n${entry.note}" : ""}"
+                  : entry.note != null
                   ? "${entry.username}\n${entry.note}"
                   : entry.username,
             ),
             isThreeLine: entry.note != null,
-            trailing: const Icon(Icons.visibility_off),
+            trailing: IconButton(
+              icon: Icon(_visiblePasswords.contains(entry.id)
+                  ? Icons.visibility
+                  : Icons.visibility_off),
+              onPressed: () {
+                setState(() {
+                  if (_visiblePasswords.contains(entry.id)) {
+                    _visiblePasswords.remove(entry.id);
+                  } else {
+                    _visiblePasswords.add(entry.id);
+                  }
+                });
+              },
+            ),
+
           );
         },
       ),
