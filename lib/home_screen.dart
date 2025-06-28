@@ -40,12 +40,12 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
           onSave: ({
+            required String id,
             required String service,
             required String username,
             required String password,
             String? note,
           }) {
-            final id = DateTime.now().millisecondsSinceEpoch.toString();
             final entry = PasswordEntry(
               id: id,
               service: service,
@@ -53,12 +53,23 @@ class _HomeScreenState extends State<HomeScreen> {
               password: password,
               note: note,
             );
-            _addEntry(entry);
+
+            setState(() {
+              final index = _entries.indexWhere((e) => e.id == id);
+              if (index != -1) {
+                _entries[index] = entry; // Update
+              } else {
+                _entries.add(entry); // New
+              }
+            });
+
+            SecureStorageManager.saveVault(_entries);
           },
         ),
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -81,17 +92,9 @@ class _HomeScreenState extends State<HomeScreen> {
           final entry = _entries[index];
           return ListTile(
             leading: const Icon(Icons.vpn_key),
-            title: RichText(
-              text: TextSpan(
-                style: DefaultTextStyle.of(context).style,
-                children: [
-                  const TextSpan(
-                    text: "Service: ",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  TextSpan(text: entry.service),
-                ],
-              ),
+            title: Text(
+              "Service: ${entry.service}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +168,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddEntryScreen(
+                    existingEntry: entry,
+                    onSave: ({
+                      required String id,
+                      required String service,
+                      required String username,
+                      required String password,
+                      String? note,
+                    }) {
+                      final updated = PasswordEntry(
+                        id: id,
+                        service: service,
+                        username: username,
+                        password: password,
+                        note: note,
+                      );
+                      setState(() {
+                        final index = _entries.indexWhere((e) => e.id == id);
+                        if (index != -1) _entries[index] = updated;
+                      });
+                      SecureStorageManager.saveVault(_entries);
+                    },
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

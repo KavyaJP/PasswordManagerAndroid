@@ -37,6 +37,9 @@ dependencies:
   google_sign_in: ^6.2.1
   permission_handler: ^11.3.0
   local_auth: ^2.1.6
+  googleapis: ^11.3.0
+  googleapis_auth: ^1.4.0
+  http: ^0.13.6
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
