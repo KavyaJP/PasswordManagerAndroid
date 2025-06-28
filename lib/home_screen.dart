@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/password_entry.dart';
 import 'dart:math';
+import 'add_entry_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,20 +13,35 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final List<PasswordEntry> _entries = [];
 
-  void _addDummyEntry() {
-    final id = Random().nextInt(99999).toString();
-    setState(() {
-      _entries.add(
-        PasswordEntry(
-          id: id,
-          service: "Service $id",
-          username: "user$id@example.com",
-          password: "pass$id",
-          note: id.hashCode.isEven ? "This is a dummy note for $id" : null,
+  void _openAddEntryForm() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddEntryScreen(
+          onSave: ({
+            required String service,
+            required String username,
+            required String password,
+            String? note,
+          }) {
+            final id = DateTime.now().millisecondsSinceEpoch.toString();
+            setState(() {
+              _entries.add(
+                PasswordEntry(
+                  id: id,
+                  service: service,
+                  username: username,
+                  password: password,
+                  note: note,
+                ),
+              );
+            });
+          },
         ),
-      );
-    });
+      ),
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text("🔐 Your Vault"),
         actions: [
           IconButton(
-            onPressed: _addDummyEntry,
+            onPressed: _openAddEntryForm,
             icon: const Icon(Icons.add),
             tooltip: "Add dummy entry",
           )
