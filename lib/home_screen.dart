@@ -140,23 +140,64 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             isThreeLine: entry.note != null && entry.note!.isNotEmpty,
-            trailing: IconButton(
-              icon: Icon(_visiblePasswords.contains(entry.id)
-                  ? Icons.visibility
-                  : Icons.visibility_off),
-              onPressed: () {
-                setState(() {
-                  if (_visiblePasswords.contains(entry.id)) {
-                    _visiblePasswords.remove(entry.id);
-                  } else {
-                    _visiblePasswords.add(entry.id);
-                  }
-                });
-              },
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    _visiblePasswords.contains(entry.id)
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      if (_visiblePasswords.contains(entry.id)) {
+                        _visiblePasswords.remove(entry.id);
+                      } else {
+                        _visiblePasswords.add(entry.id);
+                      }
+                    });
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => _confirmDelete(entry),
+                ),
+              ],
             ),
+
           );
         },
       ),
     );
+  }
+  void _confirmDelete(PasswordEntry entry) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete Entry"),
+        content: Text("Are you sure you want to delete the password for '${entry.service}'?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteEntry(entry);
+            },
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+  void _deleteEntry(PasswordEntry entry) async {
+    setState(() {
+      _entries.removeWhere((e) => e.id == entry.id);
+      _visiblePasswords.remove(entry.id);
+    });
+    await SecureStorageManager.saveVault(_entries);
   }
 }
