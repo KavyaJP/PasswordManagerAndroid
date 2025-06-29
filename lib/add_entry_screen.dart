@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'models/password_entry.dart'; // Needed if you want to pass existingEntry from HomeScreen
+import 'models/password_entry.dart';
 
 class AddEntryScreen extends StatefulWidget {
+  final PasswordEntry? existingEntry;
   final void Function({
   required String id,
   required String service,
@@ -10,12 +11,10 @@ class AddEntryScreen extends StatefulWidget {
   String? note,
   }) onSave;
 
-  final PasswordEntry? existingEntry;
-
   const AddEntryScreen({
     super.key,
-    required this.onSave,
     this.existingEntry,
+    required this.onSave,
   });
 
   @override
@@ -24,18 +23,20 @@ class AddEntryScreen extends StatefulWidget {
 
 class _AddEntryScreenState extends State<AddEntryScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _serviceController;
-  late final TextEditingController _usernameController;
-  late final TextEditingController _passwordController;
-  late final TextEditingController _noteController;
+  final _serviceController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _noteController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _serviceController = TextEditingController(text: widget.existingEntry?.service ?? '');
-    _usernameController = TextEditingController(text: widget.existingEntry?.username ?? '');
-    _passwordController = TextEditingController(text: widget.existingEntry?.password ?? '');
-    _noteController = TextEditingController(text: widget.existingEntry?.note ?? '');
+    if (widget.existingEntry != null) {
+      _serviceController.text = widget.existingEntry!.service;
+      _usernameController.text = widget.existingEntry!.username;
+      _passwordController.text = widget.existingEntry!.password;
+      _noteController.text = widget.existingEntry!.note ?? '';
+    }
   }
 
   @override
@@ -49,8 +50,9 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
+      final id = widget.existingEntry?.id ?? DateTime.now().millisecondsSinceEpoch.toString();
       widget.onSave(
-        id: widget.existingEntry?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        id: id,
         service: _serviceController.text.trim(),
         username: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
