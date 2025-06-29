@@ -176,80 +176,128 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _restoreVaultFromDrive() async {
+    final account = await GoogleSignIn(scopes: [drive.DriveApi.driveAppdataScope]).signIn();
+    if (account != null) {
+      try {
+        final restoredEntries = await VaultBackupManager.restoreFromDrive(account);
+        setState(() {
+          _entries.clear();
+          _entries.addAll(restoredEntries);
+        });
+        await SecureStorageManager.saveVault(_entries);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("✅ Vault restored from Google Drive")),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ Failed to restore: $e")),
+        );
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Google sign-in failed")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("🔐 Your Vault"),
-        actions: [
-          IconButton(
-            onPressed: _openAddEntryForm,
-            icon: const Icon(Icons.add),
-            tooltip: "Add entry",
-          ),
-          IconButton(
-            onPressed: _backupVaultToDrive,
-            icon: const Icon(Icons.cloud_upload),
-            tooltip: "Backup to Google Drive",
-          ),
-        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.blue),
+              child: Text(
+                '🔧 Options',
+                style: TextStyle(color: Colors.white, fontSize: 24),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.cloud_upload),
+              title: const Text('Backup to Drive'),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                _backupVaultToDrive();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.restore),
+              title: const Text('Restore from Drive'),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                _restoreVaultFromDrive();
+              },
+            ),
+          ],
+        ),
       ),
       body: _entries.isEmpty
           ? const Center(child: Text("No passwords saved yet."))
           : ListView.builder(
-              itemCount: _entries.length,
-              itemBuilder: (context, index) {
-                final entry = _entries[index];
-                return ListTile(
-                  leading: const Icon(Icons.vpn_key),
-                  title: Text(
-                    "Service: ${entry.service}",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Username: ${entry.username}"),
-                      Text(
-                        "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
-                      ),
-                      if (entry.note != null && entry.note!.isNotEmpty)
-                        Text("Note: ${entry.note}"),
-                    ],
-                  ),
-                  isThreeLine: entry.note != null && entry.note!.isNotEmpty,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          _visiblePasswords.contains(entry.id)
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            if (_visiblePasswords.contains(entry.id)) {
-                              _visiblePasswords.remove(entry.id);
-                            } else {
-                              _visiblePasswords.add(entry.id);
-                            }
-                          });
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _openEditEntryForm(entry),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () => _confirmDelete(entry),
-                      ),
-                    ],
-                  ),
-                );
-              },
+        itemCount: _entries.length,
+        itemBuilder: (context, index) {
+          final entry = _entries[index];
+          return ListTile(
+            leading: const Icon(Icons.vpn_key),
+            title: Text(
+              "Service: ${entry.service}",
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Username: ${entry.username}"),
+                Text(
+                  "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
+                ),
+                if (entry.note != null && entry.note!.isNotEmpty)
+                  Text("Note: ${entry.note}"),
+              ],
+            ),
+            isThreeLine: entry.note != null && entry.note!.isNotEmpty,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    _visiblePasswords.contains(entry.id)
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      if (_visiblePasswords.contains(entry.id)) {
+                        _visiblePasswords.remove(entry.id);
+                      } else {
+                        _visiblePasswords.add(entry.id);
+                      }
+                    });
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => _openEditEntryForm(entry),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => _confirmDelete(entry),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openAddEntryForm,
+        child: const Icon(Icons.add),
+        tooltip: "Add Entry",
+      ),
     );
   }
 }
@@ -263,6 +311,46 @@ class VaultBackupManager {
     final file = File('${directory.path}/vault_backup.json');
 
     return file.writeAsString(jsonString);
+  }
+
+  static Future<List<PasswordEntry>> restoreFromDrive(GoogleSignInAccount googleUser) async {
+    final authHeaders = await googleUser.authHeaders;
+    final client = GoogleAuthClient(authHeaders);
+    final driveApi = drive.DriveApi(client);
+
+    // Step 1: List all files named vault_backup.json
+    final fileList = await driveApi.files.list(
+      spaces: 'appDataFolder',
+      q: "name='vault_backup.json'",
+      $fields: 'files(id, name, createdTime)',
+    );
+
+    final files = fileList.files;
+    if (files == null || files.isEmpty) {
+      throw Exception("No backup file found in Drive.");
+    }
+
+    // Step 2: Sort by createdTime and pick the latest one
+    files.sort((a, b) => b.createdTime!.compareTo(a.createdTime!));
+    final latestFile = files.first;
+
+    // Step 3: Download file content
+    final mediaStream = await driveApi.files.get(
+      latestFile.id!,
+      downloadOptions: drive.DownloadOptions.fullMedia,
+    ) as drive.Media;
+
+    final tempDir = await getTemporaryDirectory();
+    final filePath = '${tempDir.path}/restored_vault.json';
+    final file = File(filePath);
+    final sink = file.openWrite();
+
+    await mediaStream.stream.pipe(sink); // Write stream to file
+    final contents = await file.readAsString();
+
+    // Step 4: Decode JSON into entries
+    final decoded = jsonDecode(contents) as List<dynamic>;
+    return decoded.map((e) => PasswordEntry.fromJson(e)).toList();
   }
 
   static Future<void> uploadToDrive(
