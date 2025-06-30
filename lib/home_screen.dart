@@ -17,11 +17,13 @@ import 'settings_screen.dart';
 class HomeScreen extends StatefulWidget {
   final void Function(bool) onThemeChanged;
   final bool isDarkTheme;
+  final VoidCallback onManualLock; // 👈 new
 
   const HomeScreen({
     super.key,
     required this.onThemeChanged,
     required this.isDarkTheme,
+    required this.onManualLock,
   });
 
   @override
@@ -244,6 +246,30 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SettingsScreen(
+                      onThemeChanged: widget.onThemeChanged,
+                      isDarkTheme: widget.isDarkTheme,
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.lock),
+              title: const Text('Lock Now'),
+              onTap: () {
+                Navigator.pop(context);
+                widget.onManualLock(); // 👈 Triggers lock
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.cloud_upload),
               title: const Text('Backup to Drive'),
               onTap: () {
@@ -260,19 +286,42 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Settings'),
-              onTap: () {
+              leading: const Icon(Icons.login),
+              title: const Text('Sign In to Google'),
+              onTap: () async {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SettingsScreen(
-                      onThemeChanged: widget.onThemeChanged,
-                      isDarkTheme: widget.isDarkTheme,
-                    ),
-                  ),
+                final googleSignIn = GoogleSignIn(
+                  scopes: [drive.DriveApi.driveAppdataScope],
                 );
+                final account = await googleSignIn.signIn();
+                if (account != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("✅ Signed in as ${account.email}")),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("❌ Sign in cancelled or failed")),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Sign Out of Google'),
+              onTap: () async {
+                Navigator.pop(context);
+                final googleSignIn = GoogleSignIn();
+                final isSignedIn = await googleSignIn.isSignedIn();
+                if (isSignedIn) {
+                  await googleSignIn.signOut();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("✅ Signed out of Google")),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("⚠️ Not signed in")),
+                  );
+                }
               },
             ),
           ],
