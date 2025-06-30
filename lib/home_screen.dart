@@ -14,6 +14,8 @@ import 'models/password_entry.dart';
 import 'secure_storage_manager.dart';
 import 'settings_screen.dart';
 
+enum FilterType { both, service, username }
+
 class HomeScreen extends StatefulWidget {
   final void Function(bool) onThemeChanged;
   final bool isDarkTheme;
@@ -35,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final Set<String> _visiblePasswords = {};
   GoogleSignInAccount? _currentUser;
   String _searchQuery = "";
+  FilterType _selectedFilter = FilterType.both;
 
   @override
   void initState() {
@@ -212,10 +215,20 @@ class _HomeScreenState extends State<HomeScreen> {
   List<PasswordEntry> _filterEntries() {
     if (_searchQuery.trim().isEmpty) return _entries;
     final query = _searchQuery.toLowerCase();
-    return _entries.where((e) {
-      return e.service.toLowerCase().contains(query) ||
-          e.username.toLowerCase().contains(query) ||
-          (e.note?.toLowerCase().contains(query) ?? false);
+
+    return _entries.where((entry) {
+      final service = entry.service.toLowerCase();
+      final username = entry.username.toLowerCase();
+      final note = (entry.note ?? "").toLowerCase();
+
+      switch (_selectedFilter) {
+        case FilterType.both:
+          return service.contains(query) || username.contains(query);
+        case FilterType.service:
+          return service.contains(query);
+        case FilterType.username:
+          return username.contains(query);
+      }
     }).toList();
   }
 
@@ -318,8 +331,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                   } else if (selected == 'switch') {
                     final user = await googleSignIn.signInSilently();
-                    await googleSignIn
-                        .disconnect(); // Sign out and allow account picker
+                    await googleSignIn.disconnect();
                     final newUser = await googleSignIn.signIn();
                     if (newUser != null) {
                       setState(() => _currentUser = newUser);
@@ -360,12 +372,33 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: "Search...",
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                suffixIcon: PopupMenuButton<FilterType>(
+                  tooltip: "Search filter",
+                  icon: const Icon(Icons.filter_list),
+                  onSelected: (FilterType selected) {
+                    setState(() => _selectedFilter = selected);
+                  },
+                  itemBuilder: (BuildContext context) => [
+                    const PopupMenuItem(
+                      value: FilterType.service,
+                      child: Text('Search by Service'),
+                    ),
+                    const PopupMenuItem(
+                      value: FilterType.username,
+                      child: Text('Search by Username'),
+                    ),
+                    const PopupMenuItem(
+                      value: FilterType.both,
+                      child: Text('Search by Both'),
+                    ),
+                  ],
+                ),
               ),
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
