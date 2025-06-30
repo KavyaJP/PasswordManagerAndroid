@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart' as drive;
@@ -171,11 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, List<PasswordEntry>> groupedEntries = {};
-    for (var entry in _entries) {
-      groupedEntries.putIfAbsent(entry.service, () => []).add(entry);
-    }
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("🔐 Your Vault"),
@@ -210,87 +206,123 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      body: groupedEntries.isEmpty
+      body: _entries.isEmpty
           ? const Center(child: Text("No passwords saved yet."))
-          : ListView(
-        children: groupedEntries.entries.map((group) {
-          return ExpansionTile(
-            title: Text(
-              group.key,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            children: group.value.map((entry) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 🔑 Key row with icons
-                        Row(
-                          children: [
-                            const Icon(Icons.vpn_key, size: 20),
-                            const Spacer(),
-                            IconButton(
-                              icon: Icon(
-                                _visiblePasswords.contains(entry.id)
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  if (_visiblePasswords.contains(entry.id)) {
-                                    _visiblePasswords.remove(entry.id);
-                                  } else {
-                                    _visiblePasswords.add(entry.id);
-                                  }
-                                });
-                              },
+          : ListView.builder(
+        itemCount: _entries.length,
+        itemBuilder: (context, index) {
+          final entry = _entries[index];
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Line 1: Icons row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Icon(Icons.vpn_key),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              _visiblePasswords.contains(entry.id)
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => _openEditEntryForm(entry),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () => _confirmDelete(entry),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          "Username: ${entry.username}",
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        if (entry.note != null && entry.note!.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            "Note: ${entry.note}",
-                            style: const TextStyle(fontSize: 16),
+                            tooltip: _visiblePasswords.contains(entry.id)
+                                ? "Hide password"
+                                : "Show password",
+                            onPressed: () {
+                              setState(() {
+                                if (_visiblePasswords.contains(entry.id)) {
+                                  _visiblePasswords.remove(entry.id);
+                                } else {
+                                  _visiblePasswords.add(entry.id);
+                                }
+                              });
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => _openEditEntryForm(entry),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => _confirmDelete(entry),
                           ),
                         ],
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ),
-              );
-            }).toList(),
+                  const SizedBox(height: 8),
+
+                  // Line 2: Username + Copy
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Username: ${entry.username}",
+                          style: const TextStyle(fontSize: 16),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 20),
+                        tooltip: "Copy Username",
+                        onPressed: () {
+                          Clipboard.setData(
+                              ClipboardData(text: entry.username));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("✔️ Username copied!")),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Line 3: Password + Copy if visible
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
+                          style: const TextStyle(fontSize: 16),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (_visiblePasswords.contains(entry.id))
+                        IconButton(
+                          icon: const Icon(Icons.copy, size: 20),
+                          tooltip: "Copy Password",
+                          onPressed: () {
+                            Clipboard.setData(
+                                ClipboardData(text: entry.password));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("✔️ Password copied!")),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Line 4: Note (if exists)
+                  if (entry.note != null && entry.note!.isNotEmpty)
+                    Text(
+                      "Note: ${entry.note}",
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                ],
+              ),
+            ),
           );
-        }).toList(),
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddEntryForm,
