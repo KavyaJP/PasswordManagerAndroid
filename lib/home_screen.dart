@@ -55,23 +55,24 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
-          onSave: ({
-            required String id,
-            required String service,
-            required String username,
-            required String password,
-            String? note,
-          }) {
-            final entry = PasswordEntry(
-              id: id,
-              service: service,
-              username: username,
-              password: password,
-              note: note,
-            );
-            _entries.add(entry);
-            _saveAndRefresh();
-          },
+          onSave:
+              ({
+                required String id,
+                required String service,
+                required String username,
+                required String password,
+                String? note,
+              }) {
+                final entry = PasswordEntry(
+                  id: id,
+                  service: service,
+                  username: username,
+                  password: password,
+                  note: note,
+                );
+                _entries.add(entry);
+                _saveAndRefresh();
+              },
         ),
       ),
     );
@@ -83,26 +84,27 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
           existingEntry: entry,
-          onSave: ({
-            required String id,
-            required String service,
-            required String username,
-            required String password,
-            String? note,
-          }) {
-            final updated = PasswordEntry(
-              id: id,
-              service: service,
-              username: username,
-              password: password,
-              note: note,
-            );
-            final index = _entries.indexWhere((e) => e.id == id);
-            if (index != -1) {
-              _entries[index] = updated;
-              _saveAndRefresh();
-            }
-          },
+          onSave:
+              ({
+                required String id,
+                required String service,
+                required String username,
+                required String password,
+                String? note,
+              }) {
+                final updated = PasswordEntry(
+                  id: id,
+                  service: service,
+                  username: username,
+                  password: password,
+                  note: note,
+                );
+                final index = _entries.indexWhere((e) => e.id == id);
+                if (index != -1) {
+                  _entries[index] = updated;
+                  _saveAndRefresh();
+                }
+              },
         ),
       ),
     );
@@ -113,7 +115,9 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Delete Entry"),
-        content: Text("Are you sure you want to delete the password for '${entry.service}'?"),
+        content: Text(
+          "Are you sure you want to delete the password for '${entry.service}'?",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -140,24 +144,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _backupVaultToDrive() async {
-    final account = await GoogleSignIn(scopes: [drive.DriveApi.driveAppdataScope]).signIn();
+    final account = await GoogleSignIn(
+      scopes: [drive.DriveApi.driveAppdataScope],
+    ).signIn();
     if (account != null) {
       await VaultBackupManager.uploadToDrive(account, _entries);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ Vault backup uploaded to Drive")),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("❌ Google sign-in failed")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("❌ Google sign-in failed")));
     }
   }
 
   Future<void> _restoreVaultFromDrive() async {
-    final account = await GoogleSignIn(scopes: [drive.DriveApi.driveAppdataScope]).signIn();
+    final account = await GoogleSignIn(
+      scopes: [drive.DriveApi.driveAppdataScope],
+    ).signIn();
     if (account != null) {
       try {
-        final restoredEntries = await VaultBackupManager.restoreFromDrive(account);
+        final restoredEntries = await VaultBackupManager.restoreFromDrive(
+          account,
+        );
         setState(() {
           _entries.clear();
           _entries.addAll(restoredEntries);
@@ -167,14 +177,14 @@ class _HomeScreenState extends State<HomeScreen> {
           const SnackBar(content: Text("✅ Vault restored from Google Drive")),
         );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("❌ Failed to restore: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("❌ Failed to restore: $e")));
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("❌ Google sign-in failed")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("❌ Google sign-in failed")));
     }
   }
 
@@ -259,92 +269,113 @@ class _HomeScreenState extends State<HomeScreen> {
       body: grouped.isEmpty
           ? const Center(child: Text("No passwords found."))
           : ListView(
-        children: grouped.entries.map((entryGroup) {
-          return ExpansionTile(
-            title: Text(
-              entryGroup.key,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            children: entryGroup.value.map((entry) {
-              return ListTile(
-                title: Row(
-                  children: [
-                    const Icon(Icons.vpn_key),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: Icon(
-                        _visiblePasswords.contains(entry.id)
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          if (_visiblePasswords.contains(entry.id)) {
-                            _visiblePasswords.remove(entry.id);
-                          } else {
-                            _visiblePasswords.add(entry.id);
-                          }
-                        });
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => _openEditEntryForm(entry),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () => _confirmDelete(entry),
-                    ),
-                  ],
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: Text("Username: ${entry.username}")),
-                        IconButton(
-                          icon: const Icon(Icons.copy, size: 18),
-                          tooltip: "Copy Username",
-                          onPressed: () {
-                            Clipboard.setData(ClipboardData(text: entry.username));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Username copied")),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
-                          ),
-                        ),
-                        if (_visiblePasswords.contains(entry.id))
+              children: grouped.entries.map((entryGroup) {
+                return ExpansionTile(
+                  title: Text(
+                    entryGroup.key,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  children: entryGroup.value.map((entry) {
+                    return ListTile(
+                      title: Row(
+                        children: [
+                          const Icon(Icons.vpn_key),
+                          const SizedBox(width: 8),
                           IconButton(
-                            icon: const Icon(Icons.copy, size: 18),
-                            tooltip: "Copy Password",
+                            icon: Icon(
+                              _visiblePasswords.contains(entry.id)
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
                             onPressed: () {
-                              Clipboard.setData(ClipboardData(text: entry.password));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Password copied")),
-                              );
+                              setState(() {
+                                if (_visiblePasswords.contains(entry.id)) {
+                                  _visiblePasswords.remove(entry.id);
+                                } else {
+                                  _visiblePasswords.add(entry.id);
+                                }
+                              });
                             },
                           ),
-                      ],
-                    ),
-                    if (entry.note != null && entry.note!.isNotEmpty)
-                      Text("Note: ${entry.note}"),
-                  ],
-                ),
-                isThreeLine: true,
-              );
-            }).toList(),
-          );
-        }).toList(),
-      ),
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => _openEditEntryForm(entry),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => _confirmDelete(entry),
+                          ),
+                        ],
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text("Username: ${entry.username}"),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.copy, size: 18),
+                                tooltip: "Copy Username",
+                                onPressed: () {
+                                  Clipboard.setData(
+                                    ClipboardData(text: entry.username),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Username copied"),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
+                                ),
+                              ),
+                              Opacity(
+                                opacity: _visiblePasswords.contains(entry.id)
+                                    ? 1
+                                    : 0,
+                                child: IgnorePointer(
+                                  ignoring: !_visiblePasswords.contains(
+                                    entry.id,
+                                  ),
+                                  child: IconButton(
+                                    icon: const Icon(Icons.copy, size: 18),
+                                    tooltip: "Copy Password",
+                                    onPressed: () {
+                                      Clipboard.setData(
+                                        ClipboardData(text: entry.password),
+                                      );
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text("Password copied"),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (entry.note != null && entry.note!.isNotEmpty)
+                            Text("Note: ${entry.note}"),
+                        ],
+                      ),
+                      isThreeLine: true,
+                    );
+                  }).toList(),
+                );
+              }).toList(),
+            ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddEntryForm,
         child: const Icon(Icons.add),
@@ -353,7 +384,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
 
 class VaultBackupManager {
   static Future<File> createBackupFile(List<PasswordEntry> entries) async {
@@ -367,9 +397,9 @@ class VaultBackupManager {
   }
 
   static Future<void> uploadToDrive(
-      GoogleSignInAccount googleUser,
-      List<PasswordEntry> entries,
-      ) async {
+    GoogleSignInAccount googleUser,
+    List<PasswordEntry> entries,
+  ) async {
     try {
       final authHeaders = await googleUser.authHeaders;
       final client = GoogleAuthClient(authHeaders);
@@ -384,7 +414,10 @@ class VaultBackupManager {
       }
 
       final fileToUpload = await createBackupFile(entries);
-      final media = drive.Media(fileToUpload.openRead(), fileToUpload.lengthSync());
+      final media = drive.Media(
+        fileToUpload.openRead(),
+        fileToUpload.lengthSync(),
+      );
       final driveFile = drive.File()
         ..name = 'vault_backup.json'
         ..parents = ['appDataFolder'];
@@ -396,19 +429,28 @@ class VaultBackupManager {
     }
   }
 
-  static Future<List<PasswordEntry>> restoreFromDrive(GoogleSignInAccount googleUser) async {
+  static Future<List<PasswordEntry>> restoreFromDrive(
+    GoogleSignInAccount googleUser,
+  ) async {
     final authHeaders = await googleUser.authHeaders;
     final client = GoogleAuthClient(authHeaders);
     final driveApi = drive.DriveApi(client);
 
     final fileList = await driveApi.files.list(spaces: 'appDataFolder');
-    final file = fileList.files?.firstWhere((f) => f.name == 'vault_backup.json');
+    final file = fileList.files?.firstWhere(
+      (f) => f.name == 'vault_backup.json',
+    );
 
     if (file == null || file.id == null) {
       throw Exception("Backup file not found");
     }
 
-    final media = await driveApi.files.get(file.id!, downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
+    final media =
+        await driveApi.files.get(
+              file.id!,
+              downloadOptions: drive.DownloadOptions.fullMedia,
+            )
+            as drive.Media;
     final content = await utf8.decoder.bind(media.stream).join();
     final jsonData = jsonDecode(content) as List<dynamic>;
 
