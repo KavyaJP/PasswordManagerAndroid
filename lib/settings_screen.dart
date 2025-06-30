@@ -19,8 +19,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _autoLockTimeout = 60; // default: 1 min
   int _clipboardClearTime = 10; // default: 10 seconds
 
-  final List<int> _autoLockOptions = [15, 30, 60, 120, 300]; // in seconds
-  final List<int> _clipboardOptions = [5, 10, 20, 30, 60];
+  final List<int> _autoLockOptions = [0, 15, 30, 60, 120, 300]; // in seconds
+  final List<int> _clipboardOptions = [0, 5, 10, 20, 30, 60];
 
   @override
   void initState() {
@@ -49,6 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String _formatSeconds(int seconds) {
+    if (seconds == 0) return "Never";
     if (seconds < 60) return "$seconds sec";
     return "${(seconds / 60).round()} min";
   }
@@ -58,6 +59,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text("⚙️ Settings")),
       body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
           SwitchListTile(
             title: const Text("🌗 Dark Mode"),
@@ -65,35 +67,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: widget.onThemeChanged,
           ),
 
-          const Divider(height: 32),
-
-          const ListTile(
-            title: Text("🔒 Auto-lock timeout"),
-            subtitle: Text("Lock the app after a period of inactivity."),
+          const Text(
+            "🔒 Auto-lock timeout",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
-          ..._autoLockOptions.map((seconds) => RadioListTile<int>(
-            title: Text(_formatSeconds(seconds)),
-            value: seconds,
-            groupValue: _autoLockTimeout,
+          const SizedBox(height: 8),
+          DropdownButton<int>(
+            value: _autoLockTimeout,
+            isExpanded: true,
+            items: _autoLockOptions.map((seconds) {
+              return DropdownMenuItem(
+                value: seconds,
+                child: Text(_formatSeconds(seconds)),
+              );
+            }).toList(),
             onChanged: (value) {
               if (value != null) _updateAutoLockTimeout(value);
             },
-          )),
-
-          const Divider(height: 32),
-
-          const ListTile(
-            title: Text("📋 Clipboard auto-clear"),
-            subtitle: Text("Clear copied password after a short duration."),
           ),
-          ..._clipboardOptions.map((seconds) => RadioListTile<int>(
-            title: Text(_formatSeconds(seconds)),
-            value: seconds,
-            groupValue: _clipboardClearTime,
+
+          const SizedBox(height: 24),
+
+          const Text(
+            "📋 Clipboard auto-clear",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          DropdownButton<int>(
+            value: _clipboardClearTime,
+            isExpanded: true,
+            items: _clipboardOptions.map((seconds) {
+              return DropdownMenuItem(
+                value: seconds,
+                child: Text(_formatSeconds(seconds)),
+              );
+            }).toList(),
             onChanged: (value) {
               if (value != null) _updateClipboardTimeout(value);
             },
-          )),
+          ),
         ],
       ),
     );

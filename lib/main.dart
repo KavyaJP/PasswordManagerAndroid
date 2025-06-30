@@ -120,16 +120,19 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.paused) {
       _lastPaused = DateTime.now();
       _shouldCheckLock = true;
     } else if (state == AppLifecycleState.resumed) {
       if (!_shouldCheckLock) return;
 
-      if (_lastPaused != null) {
+      final prefs = await SharedPreferences.getInstance();
+      final timeout = prefs.getInt('autoLockTimeout') ?? 60;
+
+      if (_lastPaused != null && timeout > 0) {
         final duration = DateTime.now().difference(_lastPaused!);
-        if (duration.inSeconds > 10) {
+        if (duration.inSeconds > timeout) {
           setState(() {
             _unlocked = false;
           });
