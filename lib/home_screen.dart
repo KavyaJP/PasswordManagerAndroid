@@ -33,13 +33,26 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final List<PasswordEntry> _entries = [];
   final Set<String> _visiblePasswords = {};
+  GoogleSignInAccount? _currentUser;
   String _searchQuery = "";
 
   @override
   void initState() {
     super.initState();
     _loadVault();
+    _checkSignedInUser();
   }
+
+  Future<void> _checkSignedInUser() async {
+    final googleSignIn = GoogleSignIn(
+      scopes: [drive.DriveApi.driveAppdataScope],
+    );
+    final user = googleSignIn.currentUser ?? await googleSignIn.signInSilently();
+    setState(() {
+      _currentUser = user;
+    });
+  }
+
 
   Future<void> _loadVault() async {
     final saved = await SecureStorageManager.loadVault();
@@ -217,6 +230,22 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("🔐 Your Vault"),
+        actions: [
+          if (_currentUser?.photoUrl != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: CircleAvatar(
+                backgroundImage: NetworkImage(_currentUser!.photoUrl!),
+              ),
+            )
+          else
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              child: CircleAvatar(
+                child: Icon(Icons.person),
+              ),
+            ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Padding(
