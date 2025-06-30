@@ -222,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: const Icon(Icons.cloud_upload),
               title: const Text('Backup to Drive'),
               onTap: () {
-                Navigator.pop(context); // Close drawer
+                Navigator.pop(context);
                 _backupVaultToDrive();
               },
             ),
@@ -230,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: const Icon(Icons.restore),
               title: const Text('Restore from Drive'),
               onTap: () {
-                Navigator.pop(context); // Close drawer
+                Navigator.pop(context);
                 _restoreVaultFromDrive();
               },
             ),
@@ -243,52 +243,70 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: _entries.length,
         itemBuilder: (context, index) {
           final entry = _entries[index];
-          return ListTile(
-            leading: const Icon(Icons.vpn_key),
-            title: Text(
-              "Service: ${entry.service}",
-              style: const TextStyle(fontWeight: FontWeight.bold),
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            elevation: 4,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Username: ${entry.username}"),
-                Text(
-                  "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
-                ),
-                if (entry.note != null && entry.note!.isNotEmpty)
-                  Text("Note: ${entry.note}"),
-              ],
-            ),
-            isThreeLine: entry.note != null && entry.note!.isNotEmpty,
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    _visiblePasswords.contains(entry.id)
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Service:",
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      if (_visiblePasswords.contains(entry.id)) {
-                        _visiblePasswords.remove(entry.id);
-                      } else {
-                        _visiblePasswords.add(entry.id);
-                      }
-                    });
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: () => _openEditEntryForm(entry),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () => _confirmDelete(entry),
-                ),
-              ],
+                  Text(
+                    entry.service,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text("Username: ${entry.username}"),
+                  Text(
+                    "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
+                  ),
+                  if (entry.note != null && entry.note!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text("Note: ${entry.note}"),
+                    ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _visiblePasswords.contains(entry.id)
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            if (_visiblePasswords.contains(entry.id)) {
+                              _visiblePasswords.remove(entry.id);
+                            } else {
+                              _visiblePasswords.add(entry.id);
+                            }
+                          });
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () => _openEditEntryForm(entry),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete),
+                        onPressed: () => _confirmDelete(entry),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           );
         },
