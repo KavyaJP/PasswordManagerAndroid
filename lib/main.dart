@@ -1,27 +1,64 @@
 import 'package:flutter/material.dart';
-import 'lock_screen.dart';
-import 'home_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'lock_screen.dart';
+import 'home_screen.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final prefs = await SharedPreferences.getInstance();
+  final isDark = prefs.getBool('isDarkTheme') ?? false;
+
+  runApp(MyApp(initialThemeMode: isDark ? ThemeMode.dark : ThemeMode.light));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  final ThemeMode initialThemeMode;
+  const MyApp({super.key, required this.initialThemeMode});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late ValueNotifier<ThemeMode> _themeNotifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _themeNotifier = ValueNotifier(widget.initialThemeMode);
+  }
+
+  void _toggleTheme(bool isDark) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDarkTheme', isDark);
+    _themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Password Manager',
-      debugShowCheckedModeBanner: false,
-      home: const AuthGate(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: _themeNotifier,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'Password Manager',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData.light(),
+          darkTheme: ThemeData.dark(),
+          themeMode: mode,
+          home: AuthGate(onThemeChanged: _toggleTheme, isDark: mode == ThemeMode.dark),
+        );
+      },
     );
   }
 }
 
 class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
+  final void Function(bool isDark) onThemeChanged;
+  final bool isDark;
+  const AuthGate({super.key, required this.onThemeChanged, required this.isDark});
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -30,7 +67,7 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   bool _unlocked = false;
   DateTime? _lastPaused;
-  bool _shouldCheckLock = true; // 👈 new flag
+  bool _shouldCheckLock = true;
 
   @override
   void initState() {
@@ -42,14 +79,11 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
     });
   }
 
-
   void _triggerAuth() async {
     if (!mounted) return;
 
-    // Delay a bit to ensure the app is truly resumed
     await Future.delayed(const Duration(milliseconds: 500));
 
-    // Only authenticate if app is in resumed state
     if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return;
 
     final localAuth = LocalAuthentication();
@@ -72,8 +106,6 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
     }
   }
 
-
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -84,9 +116,9 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       _lastPaused = DateTime.now();
-      _shouldCheckLock = true; // allow next resume to trigger lock check
+      _shouldCheckLock = true;
     } else if (state == AppLifecycleState.resumed) {
-      if (!_shouldCheckLock) return; // 👈 skip if unlock just happened
+      if (!_shouldCheckLock) return;
 
       if (_lastPaused != null) {
         final duration = DateTime.now().difference(_lastPaused!);
@@ -102,14 +134,17 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   void _onAuthenticated() {
     setState(() {
       _unlocked = true;
-      _shouldCheckLock = false; // 👈 skip lock check on immediate resume
+      _shouldCheckLock = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return _unlocked
-        ? const HomeScreen()
+        ? HomeScreen(
+      onThemeChanged: widget.onThemeChanged,
+      isDarkTheme: widget.isDark,
+    )
         : LockScreen(onAuthenticated: _onAuthenticated);
   }
 }

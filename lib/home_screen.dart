@@ -13,7 +13,14 @@ import 'models/password_entry.dart';
 import 'secure_storage_manager.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final void Function(bool) onThemeChanged;
+  final bool isDarkTheme;
+
+  const HomeScreen({
+    super.key,
+    required this.onThemeChanged,
+    required this.isDarkTheme,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -224,6 +231,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
+            SwitchListTile(
+              title: const Text('Dark Mode'),
+              value: widget.isDarkTheme,
+              onChanged: widget.onThemeChanged,
+              secondary: const Icon(Icons.brightness_6),
+            ),
             ListTile(
               leading: const Icon(Icons.cloud_upload),
               title: const Text('Backup to Drive'),
@@ -287,7 +300,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Username row with copy
                     Row(
                       children: [
                         Expanded(child: Text("Username: ${entry.username}")),
@@ -303,8 +315,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-
-                    // Password row with copy only if visible
                     Row(
                       children: [
                         Expanded(
@@ -325,8 +335,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                       ],
                     ),
-
-                    // Note (no copy)
                     if (entry.note != null && entry.note!.isNotEmpty)
                       Text("Note: ${entry.note}"),
                   ],
@@ -345,6 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
 
 class VaultBackupManager {
   static Future<File> createBackupFile(List<PasswordEntry> entries) async {
