@@ -47,12 +47,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final googleSignIn = GoogleSignIn(
       scopes: [drive.DriveApi.driveAppdataScope],
     );
-    final user = googleSignIn.currentUser ?? await googleSignIn.signInSilently();
+    final user =
+        googleSignIn.currentUser ?? await googleSignIn.signInSilently();
     setState(() {
       _currentUser = user;
     });
   }
-
 
   Future<void> _loadVault() async {
     final saved = await SecureStorageManager.loadVault();
@@ -234,44 +234,103 @@ class _HomeScreenState extends State<HomeScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: GestureDetector(
-              onTap: () async {
+              onTapDown: (details) async {
                 final googleSignIn = GoogleSignIn(
                   scopes: [drive.DriveApi.driveAppdataScope],
                 );
 
                 if (_currentUser != null) {
-                  final shouldSignOut = await showDialog<bool>(
+                  final selected = await showMenu<String>(
                     context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text("Sign Out"),
-                      content: const Text("Are you sure you want to sign out of your Google account?"),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text("Cancel"),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text("Sign Out", style: TextStyle(color: Colors.red)),
-                        ),
-                      ],
+                    position: RelativeRect.fromLTRB(
+                      details.globalPosition.dx,
+                      details.globalPosition.dy,
+                      0,
+                      0,
                     ),
+                    items: [
+                      PopupMenuItem<String>(
+                        enabled: false,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_currentUser!.displayName != null)
+                              Text(
+                                _currentUser!.displayName!,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            if (_currentUser!.email.isNotEmpty)
+                              Text(
+                                _currentUser!.email,
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                            const Divider(),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'switch',
+                        child: Text("🔄 Switch Account"),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'signout',
+                        child: Text("🚪 Sign Out"),
+                      ),
+                    ],
                   );
 
-                  if (shouldSignOut == true) {
-                    await googleSignIn.signOut();
-                    setState(() => _currentUser = null);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Signed out")),
+                  if (selected == 'signout') {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text("Sign Out"),
+                        content: const Text(
+                          "Are you sure you want to sign out?",
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text(
+                              "Sign Out",
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
                     );
+
+                    if (confirm == true) {
+                      await googleSignIn.signOut();
+                      setState(() => _currentUser = null);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Signed out")),
+                      );
+                    }
+                  } else if (selected == 'switch') {
+                    final user = await googleSignIn.signInSilently();
+                    await googleSignIn
+                        .disconnect(); // Sign out and allow account picker
+                    final newUser = await googleSignIn.signIn();
+                    if (newUser != null) {
+                      setState(() => _currentUser = newUser);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Switched to ${newUser.email}")),
+                      );
+                    }
                   }
                 } else {
                   try {
                     final user = await googleSignIn.signIn();
-                    setState(() => _currentUser = user);
                     if (user != null) {
+                      setState(() => _currentUser = user);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Signed in")),
+                        SnackBar(content: Text("Signed in as ${user.email}")),
                       );
                     }
                   } catch (e) {
