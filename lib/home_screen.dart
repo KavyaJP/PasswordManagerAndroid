@@ -46,24 +46,23 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
-          onSave:
-              ({
-                required String id,
-                required String service,
-                required String username,
-                required String password,
-                String? note,
-              }) {
-                final entry = PasswordEntry(
-                  id: id,
-                  service: service,
-                  username: username,
-                  password: password,
-                  note: note,
-                );
-                _entries.add(entry);
-                _saveAndRefresh();
-              },
+          onSave: ({
+            required String id,
+            required String service,
+            required String username,
+            required String password,
+            String? note,
+          }) {
+            final entry = PasswordEntry(
+              id: id,
+              service: service,
+              username: username,
+              password: password,
+              note: note,
+            );
+            _entries.add(entry);
+            _saveAndRefresh();
+          },
         ),
       ),
     );
@@ -75,27 +74,26 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
           existingEntry: entry,
-          onSave:
-              ({
-                required String id,
-                required String service,
-                required String username,
-                required String password,
-                String? note,
-              }) {
-                final updated = PasswordEntry(
-                  id: id,
-                  service: service,
-                  username: username,
-                  password: password,
-                  note: note,
-                );
-                final index = _entries.indexWhere((e) => e.id == id);
-                if (index != -1) {
-                  _entries[index] = updated;
-                  _saveAndRefresh();
-                }
-              },
+          onSave: ({
+            required String id,
+            required String service,
+            required String username,
+            required String password,
+            String? note,
+          }) {
+            final updated = PasswordEntry(
+              id: id,
+              service: service,
+              username: username,
+              password: password,
+              note: note,
+            );
+            final index = _entries.indexWhere((e) => e.id == id);
+            if (index != -1) {
+              _entries[index] = updated;
+              _saveAndRefresh();
+            }
+          },
         ),
       ),
     );
@@ -106,9 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Delete Entry"),
-        content: Text(
-          "Are you sure you want to delete the password for '${entry.service}'?",
-        ),
+        content: Text("Are you sure you want to delete the password for '${entry.service}'?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -135,44 +131,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _backupVaultToDrive() async {
-    final account = await GoogleSignIn(
-      scopes: [drive.DriveApi.driveAppdataScope],
-    ).signIn();
+    final account = await GoogleSignIn(scopes: [drive.DriveApi.driveAppdataScope]).signIn();
     if (account != null) {
       await VaultBackupManager.uploadToDrive(account, _entries);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ Vault backup uploaded to Drive")),
       );
-      _listAppDataFiles(); // 👈 Add this line
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("❌ Google sign-in failed")));
-    }
-  }
-
-  // ✅ Step to list files from appDataFolder
-  Future<void> _listAppDataFiles() async {
-    final account = await GoogleSignIn(
-      scopes: [drive.DriveApi.driveAppdataScope],
-    ).signIn();
-    if (account == null) {
-      debugPrint("❌ Sign in failed");
-      return;
-    }
-
-    final authHeaders = await account.authHeaders;
-    final client = GoogleAuthClient(authHeaders);
-    final driveApi = drive.DriveApi(client);
-
-    final fileList = await driveApi.files.list(spaces: 'appDataFolder');
-
-    if (fileList.files == null || fileList.files!.isEmpty) {
-      debugPrint("📭 No files found in appDataFolder.");
-    } else {
-      for (var file in fileList.files!) {
-        debugPrint("📄 File: ${file.name}, ID: ${file.id}");
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Google sign-in failed")),
+      );
     }
   }
 
@@ -203,6 +171,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final Map<String, List<PasswordEntry>> groupedEntries = {};
+    for (var entry in _entries) {
+      groupedEntries.putIfAbsent(entry.service, () => []).add(entry);
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("🔐 Your Vault"),
@@ -237,79 +210,87 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      body: _entries.isEmpty
+      body: groupedEntries.isEmpty
           ? const Center(child: Text("No passwords saved yet."))
-          : ListView.builder(
-        itemCount: _entries.length,
-        itemBuilder: (context, index) {
-          final entry = _entries[index];
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Service:",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    entry.service,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text("Username: ${entry.username}"),
-                  Text(
-                    "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
-                  ),
-                  if (entry.note != null && entry.note!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text("Note: ${entry.note}"),
-                    ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          _visiblePasswords.contains(entry.id)
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            if (_visiblePasswords.contains(entry.id)) {
-                              _visiblePasswords.remove(entry.id);
-                            } else {
-                              _visiblePasswords.add(entry.id);
-                            }
-                          });
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => _openEditEntryForm(entry),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () => _confirmDelete(entry),
-                      ),
-                    ],
-                  ),
-                ],
+          : ListView(
+        children: groupedEntries.entries.map((group) {
+          return ExpansionTile(
+            title: Text(
+              group.key,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
             ),
+            children: group.value.map((entry) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 🔑 Key row with icons
+                        Row(
+                          children: [
+                            const Icon(Icons.vpn_key, size: 20),
+                            const Spacer(),
+                            IconButton(
+                              icon: Icon(
+                                _visiblePasswords.contains(entry.id)
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  if (_visiblePasswords.contains(entry.id)) {
+                                    _visiblePasswords.remove(entry.id);
+                                  } else {
+                                    _visiblePasswords.add(entry.id);
+                                  }
+                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () => _openEditEntryForm(entry),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () => _confirmDelete(entry),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Username: ${entry.username}",
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        if (entry.note != null && entry.note!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            "Note: ${entry.note}",
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           );
-        },
+        }).toList(),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddEntryForm,
@@ -331,86 +312,53 @@ class VaultBackupManager {
     return file.writeAsString(jsonString);
   }
 
-  static Future<List<PasswordEntry>> restoreFromDrive(GoogleSignInAccount googleUser) async {
-    final authHeaders = await googleUser.authHeaders;
-    final client = GoogleAuthClient(authHeaders);
-    final driveApi = drive.DriveApi(client);
-
-    // Step 1: List all files named vault_backup.json
-    final fileList = await driveApi.files.list(
-      spaces: 'appDataFolder',
-      q: "name='vault_backup.json'",
-      $fields: 'files(id, name, createdTime)',
-    );
-
-    final files = fileList.files;
-    if (files == null || files.isEmpty) {
-      throw Exception("No backup file found in Drive.");
-    }
-
-    // Step 2: Sort by createdTime and pick the latest one
-    files.sort((a, b) => b.createdTime!.compareTo(a.createdTime!));
-    final latestFile = files.first;
-
-    // Step 3: Download file content
-    final mediaStream = await driveApi.files.get(
-      latestFile.id!,
-      downloadOptions: drive.DownloadOptions.fullMedia,
-    ) as drive.Media;
-
-    final tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/restored_vault.json';
-    final file = File(filePath);
-    final sink = file.openWrite();
-
-    await mediaStream.stream.pipe(sink); // Write stream to file
-    final contents = await file.readAsString();
-
-    // Step 4: Decode JSON into entries
-    final decoded = jsonDecode(contents) as List<dynamic>;
-    return decoded.map((e) => PasswordEntry.fromJson(e)).toList();
-  }
-
   static Future<void> uploadToDrive(
-    GoogleSignInAccount googleUser,
-    List<PasswordEntry> entries,
-  ) async {
+      GoogleSignInAccount googleUser,
+      List<PasswordEntry> entries,
+      ) async {
     try {
       final authHeaders = await googleUser.authHeaders;
       final client = GoogleAuthClient(authHeaders);
       final driveApi = drive.DriveApi(client);
 
-      // Step 1: Check for existing backup file in appDataFolder
-      final existingFiles = await driveApi.files.list(
-        spaces: 'appDataFolder',
-        q: "name = 'vault_backup.json'",
-      );
-
-      for (var file in existingFiles.files ?? []) {
-        await driveApi.files.delete(file.id!);
-        debugPrint("🗑️ Deleted old backup: ${file.id}");
+      // Delete old backup(s)
+      final fileList = await driveApi.files.list(spaces: 'appDataFolder');
+      for (final file in fileList.files ?? []) {
+        if (file.name == 'vault_backup.json') {
+          await driveApi.files.delete(file.id!);
+        }
       }
 
-      // Step 2: Create new file
       final fileToUpload = await createBackupFile(entries);
-      final media = drive.Media(
-        fileToUpload.openRead(),
-        fileToUpload.lengthSync(),
-      );
-
+      final media = drive.Media(fileToUpload.openRead(), fileToUpload.lengthSync());
       final driveFile = drive.File()
         ..name = 'vault_backup.json'
         ..parents = ['appDataFolder'];
 
-      final uploaded = await driveApi.files.create(
-        driveFile,
-        uploadMedia: media,
-      );
-
-      debugPrint("✅ Uploaded new backup: ${uploaded.id}");
+      await driveApi.files.create(driveFile, uploadMedia: media);
+      debugPrint("✅ Backup uploaded to Google Drive");
     } catch (e) {
       debugPrint("❌ Failed to upload to Drive: $e");
     }
+  }
+
+  static Future<List<PasswordEntry>> restoreFromDrive(GoogleSignInAccount googleUser) async {
+    final authHeaders = await googleUser.authHeaders;
+    final client = GoogleAuthClient(authHeaders);
+    final driveApi = drive.DriveApi(client);
+
+    final fileList = await driveApi.files.list(spaces: 'appDataFolder');
+    final file = fileList.files?.firstWhere((f) => f.name == 'vault_backup.json');
+
+    if (file == null || file.id == null) {
+      throw Exception("Backup file not found");
+    }
+
+    final media = await driveApi.files.get(file.id!, downloadOptions: drive.DownloadOptions.fullMedia) as drive.Media;
+    final content = await utf8.decoder.bind(media.stream).join();
+    final jsonData = jsonDecode(content) as List<dynamic>;
+
+    return jsonData.map((e) => PasswordEntry.fromJson(e)).toList();
   }
 }
 
