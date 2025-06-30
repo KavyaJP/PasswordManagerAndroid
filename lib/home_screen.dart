@@ -231,20 +231,66 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text("🔐 Your Vault"),
         actions: [
-          if (_currentUser?.photoUrl != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: GestureDetector(
+              onTap: () async {
+                final googleSignIn = GoogleSignIn(
+                  scopes: [drive.DriveApi.driveAppdataScope],
+                );
+
+                if (_currentUser != null) {
+                  final shouldSignOut = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("Sign Out"),
+                      content: const Text("Are you sure you want to sign out of your Google account?"),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text("Cancel"),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text("Sign Out", style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (shouldSignOut == true) {
+                    await googleSignIn.signOut();
+                    setState(() => _currentUser = null);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Signed out")),
+                    );
+                  }
+                } else {
+                  try {
+                    final user = await googleSignIn.signIn();
+                    setState(() => _currentUser = user);
+                    if (user != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Signed in")),
+                      );
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("Sign-in failed: $e")),
+                    );
+                  }
+                }
+              },
               child: CircleAvatar(
-                backgroundImage: NetworkImage(_currentUser!.photoUrl!),
-              ),
-            )
-          else
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10),
-              child: CircleAvatar(
-                child: Icon(Icons.person),
+                backgroundImage: _currentUser?.photoUrl != null
+                    ? NetworkImage(_currentUser!.photoUrl!)
+                    : null,
+                child: _currentUser?.photoUrl == null
+                    ? const Icon(Icons.person)
+                    : null,
               ),
             ),
+          ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
@@ -312,45 +358,6 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 _restoreVaultFromDrive();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.login),
-              title: const Text('Sign In to Google'),
-              onTap: () async {
-                Navigator.pop(context);
-                final googleSignIn = GoogleSignIn(
-                  scopes: [drive.DriveApi.driveAppdataScope],
-                );
-                final account = await googleSignIn.signIn();
-                if (account != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("✅ Signed in as ${account.email}")),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("❌ Sign in cancelled or failed")),
-                  );
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Sign Out of Google'),
-              onTap: () async {
-                Navigator.pop(context);
-                final googleSignIn = GoogleSignIn();
-                final isSignedIn = await googleSignIn.isSignedIn();
-                if (isSignedIn) {
-                  await googleSignIn.signOut();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("✅ Signed out of Google")),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("⚠️ Not signed in")),
-                  );
-                }
               },
             ),
           ],
