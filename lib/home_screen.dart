@@ -47,11 +47,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final googleSignIn = GoogleSignIn(
       scopes: [drive.DriveApi.driveAppdataScope],
     );
-    final user =
-        googleSignIn.currentUser ?? await googleSignIn.signInSilently();
-    setState(() {
-      _currentUser = user;
-    });
+
+    // Try silent sign-in (restores previous user if available)
+    final user = await googleSignIn.signInSilently();
+
+    if (user != null) {
+      setState(() {
+        _currentUser = user;
+      });
+    }
   }
 
   Future<void> _loadVault() async {
