@@ -4,6 +4,7 @@ import 'package:local_auth/local_auth.dart';
 
 import 'lock_screen.dart';
 import 'home_screen.dart';
+import 'settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,7 +49,16 @@ class _MyAppState extends State<MyApp> {
           theme: ThemeData.light(),
           darkTheme: ThemeData.dark(),
           themeMode: mode,
-          home: AuthGate(onThemeChanged: _toggleTheme, isDark: mode == ThemeMode.dark),
+          routes: {
+            '/settings': (context) => SettingsScreen(
+              onThemeChanged: _toggleTheme,
+              isDarkTheme: mode == ThemeMode.dark,
+            ),
+          },
+          home: AuthGate(
+            onThemeChanged: _toggleTheme,
+            isDark: mode == ThemeMode.dark,
+          ),
         );
       },
     );
@@ -73,10 +83,7 @@ class _AuthGateState extends State<AuthGate> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _triggerAuth();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _triggerAuth());
   }
 
   void _triggerAuth() async {

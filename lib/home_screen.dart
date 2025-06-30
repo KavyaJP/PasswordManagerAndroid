@@ -11,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import 'add_entry_screen.dart';
 import 'models/password_entry.dart';
 import 'secure_storage_manager.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final void Function(bool) onThemeChanged;
@@ -55,24 +56,23 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
-          onSave:
-              ({
-                required String id,
-                required String service,
-                required String username,
-                required String password,
-                String? note,
-              }) {
-                final entry = PasswordEntry(
-                  id: id,
-                  service: service,
-                  username: username,
-                  password: password,
-                  note: note,
-                );
-                _entries.add(entry);
-                _saveAndRefresh();
-              },
+          onSave: ({
+            required String id,
+            required String service,
+            required String username,
+            required String password,
+            String? note,
+          }) {
+            final entry = PasswordEntry(
+              id: id,
+              service: service,
+              username: username,
+              password: password,
+              note: note,
+            );
+            _entries.add(entry);
+            _saveAndRefresh();
+          },
         ),
       ),
     );
@@ -84,27 +84,26 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
           existingEntry: entry,
-          onSave:
-              ({
-                required String id,
-                required String service,
-                required String username,
-                required String password,
-                String? note,
-              }) {
-                final updated = PasswordEntry(
-                  id: id,
-                  service: service,
-                  username: username,
-                  password: password,
-                  note: note,
-                );
-                final index = _entries.indexWhere((e) => e.id == id);
-                if (index != -1) {
-                  _entries[index] = updated;
-                  _saveAndRefresh();
-                }
-              },
+          onSave: ({
+            required String id,
+            required String service,
+            required String username,
+            required String password,
+            String? note,
+          }) {
+            final updated = PasswordEntry(
+              id: id,
+              service: service,
+              username: username,
+              password: password,
+              note: note,
+            );
+            final index = _entries.indexWhere((e) => e.id == id);
+            if (index != -1) {
+              _entries[index] = updated;
+              _saveAndRefresh();
+            }
+          },
         ),
       ),
     );
@@ -115,9 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Delete Entry"),
-        content: Text(
-          "Are you sure you want to delete the password for '${entry.service}'?",
-        ),
+        content: Text("Are you sure you want to delete the password for '${entry.service}'?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -144,30 +141,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _backupVaultToDrive() async {
-    final account = await GoogleSignIn(
-      scopes: [drive.DriveApi.driveAppdataScope],
-    ).signIn();
+    final account = await GoogleSignIn(scopes: [drive.DriveApi.driveAppdataScope]).signIn();
     if (account != null) {
       await VaultBackupManager.uploadToDrive(account, _entries);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ Vault backup uploaded to Drive")),
       );
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("❌ Google sign-in failed")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Google sign-in failed")),
+      );
     }
   }
 
   Future<void> _restoreVaultFromDrive() async {
-    final account = await GoogleSignIn(
-      scopes: [drive.DriveApi.driveAppdataScope],
-    ).signIn();
+    final account = await GoogleSignIn(scopes: [drive.DriveApi.driveAppdataScope]).signIn();
     if (account != null) {
       try {
-        final restoredEntries = await VaultBackupManager.restoreFromDrive(
-          account,
-        );
+        final restoredEntries = await VaultBackupManager.restoreFromDrive(account);
         setState(() {
           _entries.clear();
           _entries.addAll(restoredEntries);
@@ -177,14 +168,14 @@ class _HomeScreenState extends State<HomeScreen> {
           const SnackBar(content: Text("✅ Vault restored from Google Drive")),
         );
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("❌ Failed to restore: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ Failed to restore: $e")),
+        );
       }
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("❌ Google sign-in failed")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ Google sign-in failed")),
+      );
     }
   }
 
@@ -241,12 +232,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
-            SwitchListTile(
-              title: const Text('Dark Mode'),
-              value: widget.isDarkTheme,
-              onChanged: widget.onThemeChanged,
-              secondary: const Icon(Icons.brightness_6),
-            ),
             ListTile(
               leading: const Icon(Icons.cloud_upload),
               title: const Text('Backup to Drive'),
@@ -263,119 +248,119 @@ class _HomeScreenState extends State<HomeScreen> {
                 _restoreVaultFromDrive();
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SettingsScreen(
+                      onThemeChanged: widget.onThemeChanged,
+                      isDarkTheme: widget.isDarkTheme,
+                    ),
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
       body: grouped.isEmpty
           ? const Center(child: Text("No passwords found."))
           : ListView(
-              children: grouped.entries.map((entryGroup) {
-                return ExpansionTile(
-                  title: Text(
-                    entryGroup.key,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  children: entryGroup.value.map((entry) {
-                    return ListTile(
-                      title: Row(
-                        children: [
-                          const Icon(Icons.vpn_key),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: Icon(
-                              _visiblePasswords.contains(entry.id)
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                if (_visiblePasswords.contains(entry.id)) {
-                                  _visiblePasswords.remove(entry.id);
-                                } else {
-                                  _visiblePasswords.add(entry.id);
-                                }
-                              });
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () => _openEditEntryForm(entry),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () => _confirmDelete(entry),
-                          ),
-                        ],
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text("Username: ${entry.username}"),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.copy, size: 18),
-                                tooltip: "Copy Username",
-                                onPressed: () {
-                                  Clipboard.setData(
-                                    ClipboardData(text: entry.username),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Username copied"),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
-                                ),
-                              ),
-                              Opacity(
-                                opacity: _visiblePasswords.contains(entry.id)
-                                    ? 1
-                                    : 0,
-                                child: IgnorePointer(
-                                  ignoring: !_visiblePasswords.contains(
-                                    entry.id,
-                                  ),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.copy, size: 18),
-                                    tooltip: "Copy Password",
-                                    onPressed: () {
-                                      Clipboard.setData(
-                                        ClipboardData(text: entry.password),
-                                      );
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text("Password copied"),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (entry.note != null && entry.note!.isNotEmpty)
-                            Text("Note: ${entry.note}"),
-                        ],
-                      ),
-                      isThreeLine: true,
-                    );
-                  }).toList(),
-                );
-              }).toList(),
+        children: grouped.entries.map((entryGroup) {
+          return ExpansionTile(
+            title: Text(
+              entryGroup.key,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
+            children: entryGroup.value.map((entry) {
+              return ListTile(
+                title: Row(
+                  children: [
+                    const Icon(Icons.vpn_key),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: Icon(
+                        _visiblePasswords.contains(entry.id)
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          if (_visiblePasswords.contains(entry.id)) {
+                            _visiblePasswords.remove(entry.id);
+                          } else {
+                            _visiblePasswords.add(entry.id);
+                          }
+                        });
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => _openEditEntryForm(entry),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () => _confirmDelete(entry),
+                    ),
+                  ],
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: Text("Username: ${entry.username}")),
+                        IconButton(
+                          icon: const Icon(Icons.copy, size: 18),
+                          tooltip: "Copy Username",
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: entry.username));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Username copied")),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
+                          ),
+                        ),
+                        Opacity(
+                          opacity: _visiblePasswords.contains(entry.id) ? 1 : 0,
+                          child: IgnorePointer(
+                            ignoring: !_visiblePasswords.contains(entry.id),
+                            child: IconButton(
+                              icon: const Icon(Icons.copy, size: 18),
+                              tooltip: "Copy Password",
+                              onPressed: () {
+                                Clipboard.setData(ClipboardData(text: entry.password));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("Password copied")),
+                                );
+                              },
+                            ),
+                          ),
+                        )
+                      ],
+                    ),
+                    if (entry.note != null && entry.note!.isNotEmpty)
+                      Text("Note: ${entry.note}"),
+                  ],
+                ),
+                isThreeLine: true,
+              );
+            }).toList(),
+          );
+        }).toList(),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddEntryForm,
         child: const Icon(Icons.add),
