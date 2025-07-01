@@ -14,7 +14,7 @@ import 'models/password_entry.dart';
 import 'secure_storage_manager.dart';
 import 'settings_screen.dart';
 
-enum FilterType { both, service, username }
+enum FilterType { both, service, username}
 
 class HomeScreen extends StatefulWidget {
   final void Function(bool) onThemeChanged;
@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   GoogleSignInAccount? _currentUser;
   String _searchQuery = "";
   FilterType _selectedFilter = FilterType.both;
+  bool _showOnlyFavorites = false;
 
   @override
   void initState() {
@@ -213,13 +214,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<PasswordEntry> _filterEntries() {
-    if (_searchQuery.trim().isEmpty) return _entries;
-    final query = _searchQuery.toLowerCase();
+    List<PasswordEntry> filtered = _entries;
 
-    return _entries.where((entry) {
+    if (_showOnlyFavorites) {
+      filtered = filtered.where((e) => e.isFavorite == true).toList();
+    }
+
+    if (_searchQuery.trim().isEmpty) return filtered;
+
+    final query = _searchQuery.toLowerCase();
+    return filtered.where((entry) {
       final service = entry.service.toLowerCase();
       final username = entry.username.toLowerCase();
-      final note = (entry.note ?? "").toLowerCase();
 
       switch (_selectedFilter) {
         case FilterType.both:
@@ -248,6 +254,18 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text("🔐 Your Vault"),
         actions: [
+          IconButton(
+            icon: Icon(
+              _showOnlyFavorites ? Icons.star : Icons.star_border,
+              color: _showOnlyFavorites ? Colors.amber : Colors.white,
+            ),
+            tooltip: _showOnlyFavorites
+                ? 'Showing Favorites'
+                : 'Show Favorites Only',
+            onPressed: () {
+              setState(() => _showOnlyFavorites = !_showOnlyFavorites);
+            },
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: GestureDetector(
@@ -471,32 +489,52 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: entryGroup.value.map((entry) {
                     return ListTile(
                       title: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Icon(Icons.vpn_key),
-                          const SizedBox(width: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.vpn_key),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: Icon(
+                                  _visiblePasswords.contains(entry.id)
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    if (_visiblePasswords.contains(entry.id)) {
+                                      _visiblePasswords.remove(entry.id);
+                                    } else {
+                                      _visiblePasswords.add(entry.id);
+                                    }
+                                  });
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.edit),
+                                onPressed: () => _openEditEntryForm(entry),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete),
+                                onPressed: () => _confirmDelete(entry),
+                              ),
+                            ],
+                          ),
                           IconButton(
                             icon: Icon(
-                              _visiblePasswords.contains(entry.id)
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
+                              entry.isFavorite ? Icons.star : Icons.star_border,
+                              color: entry.isFavorite ? Colors.amber : null,
                             ),
+                            tooltip: entry.isFavorite
+                                ? "Unfavorite"
+                                : "Mark as Favorite",
                             onPressed: () {
                               setState(() {
-                                if (_visiblePasswords.contains(entry.id)) {
-                                  _visiblePasswords.remove(entry.id);
-                                } else {
-                                  _visiblePasswords.add(entry.id);
-                                }
+                                entry.isFavorite = !entry.isFavorite;
+                                _saveAndRefresh(); // Persist favorite status
                               });
                             },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () => _openEditEntryForm(entry),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () => _confirmDelete(entry),
                           ),
                         ],
                       ),
