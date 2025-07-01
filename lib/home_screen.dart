@@ -14,7 +14,7 @@ import 'models/password_entry.dart';
 import 'secure_storage_manager.dart';
 import 'settings_screen.dart';
 
-enum FilterType { both, service, username}
+enum FilterType { both, service, username }
 
 class HomeScreen extends StatefulWidget {
   final void Function(bool) onThemeChanged;
@@ -87,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 required String username,
                 required String password,
                 String? note,
+                String? imagePath,
               }) {
                 final entry = PasswordEntry(
                   id: id,
@@ -94,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   username: username,
                   password: password,
                   note: note,
+                  imagePath: imagePath,
                 );
                 _entries.add(entry);
                 _saveAndRefresh();
@@ -116,6 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 required String username,
                 required String password,
                 String? note,
+                String? imagePath,
               }) {
                 final updated = PasswordEntry(
                   id: id,
@@ -123,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   username: username,
                   password: password,
                   note: note,
+                  imagePath: imagePath,
                 );
                 final index = _entries.indexWhere((e) => e.id == id);
                 if (index != -1) {
@@ -173,7 +177,13 @@ class _HomeScreenState extends State<HomeScreen> {
       scopes: [drive.DriveApi.driveAppdataScope],
     ).signIn();
     if (account != null) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
       await VaultBackupManager.uploadToDrive(account, _entries);
+      Navigator.pop(context); // Close the loader
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ Vault backup uploaded to Drive")),
       );
@@ -190,9 +200,15 @@ class _HomeScreenState extends State<HomeScreen> {
     ).signIn();
     if (account != null) {
       try {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        );
         final restoredEntries = await VaultBackupManager.restoreFromDrive(
           account,
         );
+        Navigator.pop(context); // Close the loader
         setState(() {
           _entries.clear();
           _entries.addAll(restoredEntries);
@@ -239,11 +255,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Map<String, List<PasswordEntry>> _groupedEntries() {
+    final List<PasswordEntry> filtered = _filterEntries()
+      ..sort(
+        (a, b) => a.service.toLowerCase().compareTo(b.service.toLowerCase()),
+      );
+
     final Map<String, List<PasswordEntry>> grouped = {};
-    for (final entry in _filterEntries()) {
+    for (final entry in filtered) {
       grouped.putIfAbsent(entry.service, () => []).add(entry);
     }
     return grouped;
+  }
+
+  Future<void> _downloadVaultLocally() async {
+    try {
+      final directory = await getExternalStorageDirectory();
+      final path =
+          directory?.path ?? (await getApplicationDocumentsDirectory()).path;
+      final file = File('$path/vault_backup_download.json');
+
+      final jsonData = _entries.map((e) => e.toJson()).toList();
+      await file.writeAsString(jsonEncode(jsonData));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("✅ Vault downloaded to:\n${file.path}")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("❌ Failed to download vault: $e")));
+    }
   }
 
   @override
@@ -474,6 +515,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 _restoreVaultFromDrive();
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.download),
+              title: const Text('Download Vault (Local)'),
+              onTap: () {
+                Navigator.pop(context);
+                _downloadVaultLocally();
+              },
+            ),
           ],
         ),
       ),
@@ -587,17 +636,21 @@ class _HomeScreenState extends State<HomeScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
+                                  entry.imagePath != null
+                                      ? "Password: (see screenshot)"
+                                      : "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
                                 ),
                               ),
                               Opacity(
-                                opacity: _visiblePasswords.contains(entry.id)
-                                    ? 1
-                                    : 0,
+                                opacity:
+                                    (entry.imagePath != null ||
+                                        !_visiblePasswords.contains(entry.id))
+                                    ? 0
+                                    : 1,
                                 child: IgnorePointer(
-                                  ignoring: !_visiblePasswords.contains(
-                                    entry.id,
-                                  ),
+                                  ignoring:
+                                      (entry.imagePath != null ||
+                                      !_visiblePasswords.contains(entry.id)),
                                   child: IconButton(
                                     icon: const Icon(Icons.copy, size: 18),
                                     tooltip: "Copy Password",
@@ -620,6 +673,32 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           if (entry.note != null && entry.note!.isNotEmpty)
                             Text("Note: ${entry.note}"),
+                          if (entry.imagePath != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => FullImageView(
+                                        imagePath: entry.imagePath!,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.image, size: 20),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "View Screenshot",
+                                      style: TextStyle(color: Colors.blue),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                       isThreeLine: true,
@@ -725,5 +804,19 @@ class GoogleAuthClient extends http.BaseClient {
   @override
   void close() {
     _client.close();
+  }
+}
+
+class FullImageView extends StatelessWidget {
+  final String imagePath;
+
+  const FullImageView({super.key, required this.imagePath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Screenshot")),
+      body: Center(child: Image.file(File(imagePath))),
+    );
   }
 }
