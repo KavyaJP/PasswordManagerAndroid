@@ -11,7 +11,7 @@ class AddEntryScreen extends StatefulWidget {
     required String username,
     required String password,
     String? note,
-    String? imagePath, // 👈 ADD THIS
+    required List<String> imagePaths,
   })
   onSave;
 
@@ -27,7 +27,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _noteController = TextEditingController();
-  String? _selectedImagePath;
+  List<String> _selectedImagePaths = [];
 
   @override
   void initState() {
@@ -37,7 +37,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       _usernameController.text = widget.existingEntry!.username;
       _passwordController.text = widget.existingEntry!.password;
       _noteController.text = widget.existingEntry!.note ?? '';
-      _selectedImagePath = widget.existingEntry!.imagePath; // 👈 Add this
+      _selectedImagePaths = widget.existingEntry?.imagePaths ?? [];
     }
   }
 
@@ -63,17 +63,18 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
         note: _noteController.text.trim().isEmpty
             ? null
             : _noteController.text.trim(),
-        imagePath: _selectedImagePath, // 👈 add this
+        imagePaths: _selectedImagePaths,
       );
       Navigator.pop(context);
     }
   }
 
-  Future<void> _pickImage() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked != null) {
+  Future<void> _pickImages() async {
+    final picker = ImagePicker();
+    final pickedList = await picker.pickMultiImage();
+    if (pickedList.isNotEmpty) {
       setState(() {
-        _selectedImagePath = picked.path;
+        _selectedImagePaths.addAll(pickedList.map((e) => e.path));
       });
     }
   }
@@ -124,25 +125,48 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _pickImage,
-                    icon: const Icon(Icons.image),
-                    label: const Text("Choose Image"),
+              if (_selectedImagePaths.isNotEmpty)
+                SizedBox(
+                  height: 100,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _selectedImagePaths.length,
+                    itemBuilder: (context, index) {
+                      final path = _selectedImagePaths[index];
+                      return Stack(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(right: 12),
+                            child: Image.file(
+                              File(path),
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: IconButton(
+                              icon: const Icon(Icons.cancel, color: Colors.red),
+                              onPressed: () {
+                                setState(
+                                  () => _selectedImagePaths.removeAt(index),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
-                  const SizedBox(width: 16),
-                  if (_selectedImagePath != null)
-                    SizedBox(
-                      width: 60,
-                      height: 60,
-                      child: Image.file(
-                        File(_selectedImagePath!),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                ],
+                ),
+              ElevatedButton.icon(
+                onPressed: _pickImages,
+                icon: const Icon(Icons.image),
+                label: const Text("Add Screenshot(s)"),
               ),
+              const SizedBox(height: 20),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _submit,

@@ -87,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 required String username,
                 required String password,
                 String? note,
-                String? imagePath,
+                required List<String> imagePaths,
               }) {
                 final entry = PasswordEntry(
                   id: id,
@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   username: username,
                   password: password,
                   note: note,
-                  imagePath: imagePath,
+                  imagePaths: imagePaths,
                 );
                 _entries.add(entry);
                 _saveAndRefresh();
@@ -111,29 +111,29 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
           existingEntry: entry,
-          onSave:
-              ({
-                required String id,
-                required String service,
-                required String username,
-                required String password,
-                String? note,
-                String? imagePath,
-              }) {
-                final updated = PasswordEntry(
-                  id: id,
-                  service: service,
-                  username: username,
-                  password: password,
-                  note: note,
-                  imagePath: imagePath,
-                );
-                final index = _entries.indexWhere((e) => e.id == id);
-                if (index != -1) {
-                  _entries[index] = updated;
-                  _saveAndRefresh();
-                }
-              },
+          onSave: ({
+            required String id,
+            required String service,
+            required String username,
+            required String password,
+            String? note,
+            required List<String> imagePaths,
+          }) {
+            final updated = PasswordEntry(
+              id: id,
+              service: service,
+              username: username,
+              password: password,
+              note: note,
+              imagePaths: imagePaths,
+              isFavorite: entry.isFavorite, // retain favorite flag
+            );
+            final index = _entries.indexWhere((e) => e.id == id);
+            if (index != -1) {
+              _entries[index] = updated;
+              _saveAndRefresh();
+            }
+          },
         ),
       ),
     );
@@ -636,67 +636,52 @@ class _HomeScreenState extends State<HomeScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  entry.imagePath != null
-                                      ? "Password: (see screenshot)"
-                                      : "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
+                                  "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
                                 ),
                               ),
-                              Opacity(
-                                opacity:
-                                    (entry.imagePath != null ||
-                                        !_visiblePasswords.contains(entry.id))
-                                    ? 0
-                                    : 1,
-                                child: IgnorePointer(
-                                  ignoring:
-                                      (entry.imagePath != null ||
-                                      !_visiblePasswords.contains(entry.id)),
-                                  child: IconButton(
-                                    icon: const Icon(Icons.copy, size: 18),
-                                    tooltip: "Copy Password",
-                                    onPressed: () {
-                                      Clipboard.setData(
-                                        ClipboardData(text: entry.password),
-                                      );
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text("Password copied"),
-                                        ),
-                                      );
-                                    },
-                                  ),
+                              if (_visiblePasswords.contains(entry.id))
+                                IconButton(
+                                  icon: const Icon(Icons.copy, size: 18),
+                                  tooltip: "Copy Password",
+                                  onPressed: () {
+                                    Clipboard.setData(ClipboardData(text: entry.password));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text("Password copied")),
+                                    );
+                                  },
                                 ),
-                              ),
                             ],
                           ),
                           if (entry.note != null && entry.note!.isNotEmpty)
                             Text("Note: ${entry.note}"),
-                          if (entry.imagePath != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => FullImageView(
-                                        imagePath: entry.imagePath!,
+                          if (entry.imagePaths.isNotEmpty)
+                            SizedBox(
+                              height: 100,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: entry.imagePaths.length,
+                                itemBuilder: (context, index) {
+                                  final path = entry.imagePaths[index];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (_) => Dialog(
+                                            child: Image.file(File(path)),
+                                          ),
+                                        );
+                                      },
+                                      child: Image.file(
+                                        File(path),
+                                        width: 100,
+                                        height: 100,
+                                        fit: BoxFit.cover,
                                       ),
                                     ),
                                   );
                                 },
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.image, size: 20),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      "View Screenshot",
-                                      style: TextStyle(color: Colors.blue),
-                                    ),
-                                  ],
-                                ),
                               ),
                             ),
                         ],

@@ -5,7 +5,7 @@ class PasswordEntry {
   final String password;
   final String? note;
   bool isFavorite;
-  final String? imagePath;
+  final List<String> imagePaths;
 
   PasswordEntry({
     required this.id,
@@ -14,7 +14,7 @@ class PasswordEntry {
     required this.password,
     this.note,
     this.isFavorite = false,
-    this.imagePath, // 👈
+    this.imagePaths = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -24,7 +24,7 @@ class PasswordEntry {
     "password": password,
     "note": note,
     "isFavorite": isFavorite,
-    "imagePath": imagePath,
+    "imagePaths": imagePaths,
   };
 
   factory PasswordEntry.fromJson(Map<String, dynamic> json) => PasswordEntry(
@@ -34,6 +34,6 @@ class PasswordEntry {
     password: json["password"],
     note: json["note"],
     isFavorite: json["isFavorite"] ?? false,
-    imagePath: json["imagePath"],
+    imagePaths: List<String>.from(json["imagePaths"] ?? []),
   );
 }
