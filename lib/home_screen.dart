@@ -235,9 +235,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _restoreVaultFromLocal() async {
     try {
-      // Step 1: Pick folder
       final result = await FilePicker.platform.getDirectoryPath();
-      if (result == null) return; // user canceled
+      if (result == null) return;
 
       final backupFile = File('$result/vault_backup_download.json');
       if (!await backupFile.exists()) {
@@ -247,7 +246,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      // Step 2: Parse JSON
       final jsonString = await backupFile.readAsString();
       final jsonData = jsonDecode(jsonString) as List;
       final tempDir = await getTemporaryDirectory();
@@ -270,28 +268,24 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
 
-        restoredEntries.add(
-          PasswordEntry(
-            id: entry.id,
-            service: entry.service,
-            username: entry.username,
-            password: entry.password,
-            note: entry.note,
-            isFavorite: entry.isFavorite,
-            imagePaths: newImagePaths,
-          ),
-        );
+        restoredEntries.add(entry.copyWith(imagePaths: newImagePaths));
       }
 
+      final existingIds = _entries.map((e) => e.id).toSet();
+
+      // Merge new entries without duplicates
+      final nonDuplicateEntries = restoredEntries
+          .where((entry) => !existingIds.contains(entry.id))
+          .toList();
+
       setState(() {
-        _entries.clear();
-        _entries.addAll(restoredEntries);
+        _entries.addAll(nonDuplicateEntries);
       });
 
       await SecureStorageManager.saveVault(_entries);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Vault restored from local folder")),
+        const SnackBar(content: Text("✅ Vault merged from local folder")),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -709,7 +703,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.download),
-              title: const Text('Download Vault from Drive (Local)'),
+              title: const Text('Download Vault from Drive to Local'),
               onTap: () async {
                 Navigator.pop(context);
                 try {
@@ -724,7 +718,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.backup),
-              title: const Text('Export Vault from Application (JSON + Images)'),
+              title: const Text('Export Vault from Application to Local'),
               onTap: () async {
                 Navigator.pop(context);
                 await exportVaultWithImagesLocally();
@@ -993,11 +987,9 @@ class VaultBackupManager {
     final client = GoogleAuthClient(authHeaders);
     final driveApi = drive.DriveApi(client);
 
-    // Fetch file list
     final fileList = await driveApi.files.list(spaces: 'appDataFolder');
     final allFiles = fileList.files ?? [];
 
-    // Find the backup file
     final backupFile = allFiles.firstWhere(
           (f) => f.name == 'vault_backup.json',
       orElse: () => throw Exception("Backup file not found"),
@@ -1016,7 +1008,6 @@ class VaultBackupManager {
     final jsonData = jsonDecode(content) as List<dynamic>;
     final restoredEntries = jsonData.map((e) => PasswordEntry.fromJson(e)).toList();
 
-    // Restore images
     final tempDir = await getTemporaryDirectory();
 
     for (final entry in restoredEntries) {

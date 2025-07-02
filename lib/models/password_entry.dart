@@ -17,6 +17,25 @@ class PasswordEntry {
     this.imagePaths = const [],
   });
 
+  PasswordEntry copyWith({
+    String? id,
+    String? service,
+    String? username,
+    String? password,
+    String? note,
+    bool? isFavorite,
+    List<String>? imagePaths,
+  }) {
+    return PasswordEntry(
+      id: id ?? this.id,
+      service: service ?? this.service,
+      username: username ?? this.username,
+      password: password ?? this.password,
+      note: note ?? this.note,
+      isFavorite: isFavorite ?? this.isFavorite,
+      imagePaths: imagePaths ?? this.imagePaths,
+    );
+  }
   Map<String, dynamic> toJson() => {
     "id": id,
     "service": service,
