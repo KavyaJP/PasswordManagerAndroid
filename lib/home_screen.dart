@@ -270,21 +270,56 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _downloadVaultLocally() async {
     try {
-      final directory = await getExternalStorageDirectory();
-      final path =
-          directory?.path ?? (await getApplicationDocumentsDirectory()).path;
-      final file = File('$path/vault_backup_download.json');
+      final baseDir = await getExternalStorageDirectory() ??
+          await getApplicationDocumentsDirectory();
 
-      final jsonData = _entries.map((e) => e.toJson()).toList();
-      await file.writeAsString(jsonEncode(jsonData));
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final folderPath = '${baseDir.path}/VaultBackup_$timestamp';
+      final folder = Directory(folderPath);
+      await folder.create(recursive: true);
+
+      // Copy images and update imagePaths
+      final entriesToSave = <PasswordEntry>[];
+
+      for (final entry in _entries) {
+        final newImagePaths = <String>[];
+
+        for (int i = 0; i < entry.imagePaths.length; i++) {
+          final image = File(entry.imagePaths[i]);
+          if (await image.exists()) {
+            final newImagePath = '$folderPath/vault_image_${entry.id}_$i.png';
+            await image.copy(newImagePath);
+            newImagePaths.add(newImagePath);
+          }
+        }
+
+        entriesToSave.add(
+          PasswordEntry(
+            id: entry.id,
+            service: entry.service,
+            username: entry.username,
+            password: entry.password,
+            note: entry.note,
+            isFavorite: entry.isFavorite,
+            imagePaths: newImagePaths,
+          ),
+        );
+      }
+
+      // Save JSON with new image paths
+      final jsonFile = File('$folderPath/vault_backup_download.json');
+      final jsonData = entriesToSave.map((e) => e.toJson()).toList();
+      await jsonFile.writeAsString(jsonEncode(jsonData));
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("✅ Vault downloaded to:\n${file.path}")),
+        SnackBar(
+          content: Text("✅ Vault and images saved at:\n$folderPath"),
+        ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("❌ Failed to download vault: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Failed to download vault: $e")),
+      );
     }
   }
 
