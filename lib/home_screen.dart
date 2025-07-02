@@ -429,6 +429,55 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> exportVaultWithImagesLocally() async {
+    try {
+      await _ensureStoragePermission();
+
+      final downloadsDir = Directory('/storage/emulated/0/Download');
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final exportDirPath = '${downloadsDir.path}/VaultExport_$timestamp';
+      final exportDir = Directory(exportDirPath);
+      await exportDir.create(recursive: true);
+
+      final exportedEntries = <PasswordEntry>[];
+
+      for (final entry in _entries) {
+        final newImagePaths = <String>[];
+
+        for (int i = 0; i < entry.imagePaths.length; i++) {
+          final image = File(entry.imagePaths[i]);
+          if (await image.exists()) {
+            final newImagePath = '$exportDirPath/vault_image_${entry.id}_$i.png';
+            await image.copy(newImagePath);
+            newImagePaths.add(newImagePath);
+          }
+        }
+
+        exportedEntries.add(
+          PasswordEntry(
+            id: entry.id,
+            service: entry.service,
+            username: entry.username,
+            password: entry.password,
+            note: entry.note,
+            isFavorite: entry.isFavorite,
+            imagePaths: newImagePaths,
+          ),
+        );
+      }
+
+      final jsonFile = File('$exportDirPath/vault_export.json');
+      await jsonFile.writeAsString(jsonEncode(exportedEntries.map((e) => e.toJson()).toList()));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("✅ Vault and images exported to:\n$exportDirPath")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Failed to export vault: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -660,7 +709,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.download),
-              title: const Text('Download Vault (Local)'),
+              title: const Text('Download Vault from Drive (Local)'),
               onTap: () async {
                 Navigator.pop(context);
                 try {
@@ -671,6 +720,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     SnackBar(content: Text("❌ Failed to download: $e")),
                   );
                 }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.backup),
+              title: const Text('Export Vault from Application (JSON + Images)'),
+              onTap: () async {
+                Navigator.pop(context);
+                await exportVaultWithImagesLocally();
               },
             ),
             ListTile(
