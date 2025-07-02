@@ -363,7 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final downloadsDir = Directory('/storage/emulated/0/Download');
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final folderPath = '${downloadsDir.path}/VaultBackup_$timestamp';
+      final folderPath = '${downloadsDir.path}/Password Manager/VaultBackup_$timestamp';
       final folder = Directory(folderPath);
       await folder.create(recursive: true);
 
@@ -435,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final downloadsDir = Directory('/storage/emulated/0/Download');
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final exportDirPath = '${downloadsDir.path}/VaultExport_$timestamp';
+      final exportDirPath = '${downloadsDir.path}/Password Manager/VaultExport_$timestamp';
       final exportDir = Directory(exportDirPath);
       await exportDir.create(recursive: true);
 
