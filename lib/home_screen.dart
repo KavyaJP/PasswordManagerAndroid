@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -8,6 +10,7 @@ import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
 
 import 'add_entry_screen.dart';
 import 'models/password_entry.dart';
@@ -230,6 +233,73 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _restoreVaultFromLocal() async {
+    try {
+      // Step 1: Pick folder
+      final result = await FilePicker.platform.getDirectoryPath();
+      if (result == null) return; // user canceled
+
+      final backupFile = File('$result/vault_backup_download.json');
+      if (!await backupFile.exists()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ Backup file not found in folder")),
+        );
+        return;
+      }
+
+      // Step 2: Parse JSON
+      final jsonString = await backupFile.readAsString();
+      final jsonData = jsonDecode(jsonString) as List;
+      final tempDir = await getTemporaryDirectory();
+
+      final restoredEntries = <PasswordEntry>[];
+
+      for (final item in jsonData) {
+        final entry = PasswordEntry.fromJson(item);
+        final newImagePaths = <String>[];
+
+        for (int i = 0; i < entry.imagePaths.length; i++) {
+          final originalPath = entry.imagePaths[i];
+          final fileName = originalPath.split('/').last;
+          final sourceFile = File('$result/$fileName');
+
+          if (await sourceFile.exists()) {
+            final tempPath = '${tempDir.path}/$fileName';
+            await sourceFile.copy(tempPath);
+            newImagePaths.add(tempPath);
+          }
+        }
+
+        restoredEntries.add(
+          PasswordEntry(
+            id: entry.id,
+            service: entry.service,
+            username: entry.username,
+            password: entry.password,
+            note: entry.note,
+            isFavorite: entry.isFavorite,
+            imagePaths: newImagePaths,
+          ),
+        );
+      }
+
+      setState(() {
+        _entries.clear();
+        _entries.addAll(restoredEntries);
+      });
+
+      await SecureStorageManager.saveVault(_entries);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Vault restored from local folder")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Failed to restore vault: $e")),
+      );
+    }
+  }
+
   List<PasswordEntry> _filterEntries() {
     List<PasswordEntry> filtered = _entries;
 
@@ -270,15 +340,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _downloadVaultLocally() async {
     try {
-      final baseDir = await getExternalStorageDirectory() ??
-          await getApplicationDocumentsDirectory();
+      // Request proper permission first
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
 
+      bool isGranted = false;
+
+      if (sdkInt >= 33) {
+        final images = await Permission.photos.request();
+        isGranted = images.isGranted;
+      } else {
+        final storage = await Permission.storage.request();
+        isGranted = storage.isGranted;
+      }
+
+      if (!isGranted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("❌ Permission denied to access storage.")),
+        );
+        return;
+      }
+
+      final downloadsDir = Directory('/storage/emulated/0/Download');
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final folderPath = '${baseDir.path}/VaultBackup_$timestamp';
+      final folderPath = '${downloadsDir.path}/VaultBackup_$timestamp';
       final folder = Directory(folderPath);
       await folder.create(recursive: true);
 
-      // Copy images and update imagePaths
       final entriesToSave = <PasswordEntry>[];
 
       for (final entry in _entries) {
@@ -306,15 +394,12 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
 
-      // Save JSON with new image paths
       final jsonFile = File('$folderPath/vault_backup_download.json');
       final jsonData = entriesToSave.map((e) => e.toJson()).toList();
       await jsonFile.writeAsString(jsonEncode(jsonData));
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("✅ Vault and images saved at:\n$folderPath"),
-        ),
+        SnackBar(content: Text("✅ Vault and images saved at:\n$folderPath")),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -322,6 +407,28 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
   }
+
+  Future<void> _ensureStoragePermission() async {
+    if (!Platform.isAndroid) return;
+
+    final androidInfo = await DeviceInfoPlugin().androidInfo;
+    final sdkInt = androidInfo.version.sdkInt;
+
+    PermissionStatus status;
+
+    if (sdkInt >= 33) {
+      status = await Permission.photos.request();
+      if (!status.isGranted) {
+        throw Exception("Photos & Videos permission denied");
+      }
+    } else {
+      status = await Permission.storage.request();
+      if (!status.isGranted) {
+        throw Exception("Storage permission denied");
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -554,9 +661,24 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: const Icon(Icons.download),
               title: const Text('Download Vault (Local)'),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  await _ensureStoragePermission();
+                  await _downloadVaultLocally();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("❌ Failed to download: $e")),
+                  );
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder_open),
+              title: const Text('Restore from Local Folder'),
               onTap: () {
                 Navigator.pop(context);
-                _downloadVaultLocally();
+                _restoreVaultFromLocal();
               },
             ),
           ],
