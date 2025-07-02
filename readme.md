@@ -1,60 +1,30 @@
 # 🔐 Flutter Password Manager
 
-A secure password manager app built with Flutter.  
-It stores encrypted credentials locally using Hive and allows cloud sync via Google Drive so users can restore their data on other devices securely.
+A secure and minimal open-source password manager built with Flutter.  
+It uses AES encryption and local Hive storage to protect user data, with optional backup and restore functionality via Google Drive (SAF).
 
 ---
 
-## 📱 Features
+## 📲 Features
 
-- 🔐 AES-encrypted password storage
-- 🔑 Master password with secure local storage
-- ☁️ Backup and restore via Google Drive (Storage Access Framework)
-- 🧠 Minimal, clean Flutter UI
-- 📁 Data saved using Hive (local NoSQL database)
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Flutter 3.19+ (latest stable)
-- Dart SDK
-- Android Studio (or VS Code)
-- Android device or emulator (API 23 or higher)
-
-### Project Setup
-
-1. Clone the repo
-
-   ```bash
-   git clone https://github.com/KavyaJP/PasswordManagerAndroid.git
-   cd PasswordManagerAndroid
-   ```
-
-2. Get dependencies
-
-   ```bash
-   flutter pub get
-   ```
-
-3. Run the app
-
-   ```bash
-   flutter run
-   ```
+- 🔐 **Secure Local Storage**: AES-256 encryption with unique keys
+- 🔑 **Master Password**: Required to unlock stored credentials
+- ☁️ **Cloud Sync**: Backup and restore data to Google Drive
+- 🧠 **Minimalist UI**: Intuitive, clutter-free design
+- 🔍 **Search Functionality**: Quickly find saved credentials
+- 🛡️ **Secure Storage**: Uses `flutter_secure_storage` for storing sensitive values
 
 ---
 
-## 🛠 Tech Stack
+## 🛠️ Tech Stack
 
-| Layer      | Tool                                                        |
-| ---------- | ----------------------------------------------------------- |
-| UI         | Flutter                                                     |
-| Local DB   | Hive                                                        |
-| Encryption | encrypt, flutter_secure_storage                             |
-| Cloud Sync | Google Sign-In, Google Drive API / Storage Access Framework |
+| Layer        | Package / Tool                                             |
+| ------------ | ---------------------------------------------------------- |
+| UI           | Flutter (Material Design)                                  |
+| Local Storage| Hive (NoSQL)                                               |
+| Encryption   | `encrypt`, `flutter_secure_storage`                        |
+| Cloud Sync   | Google Sign-In, Storage Access Framework (SAF)             |
+| State Mgmt   | SetState (basic)                                           |
 
 ---
 
@@ -62,31 +32,137 @@ It stores encrypted credentials locally using Hive and allows cloud sync via Goo
 
 ```
 lib/
-├── main.dart
-├── models/
-├── screens/
-├── services/
-└── widgets/
+├── main.dart                # App entry point
+├── models/                 # Data models (e.g., Credential)
+├── screens/                # UI screens (home, login, add/edit)
+├── services/               # Business logic: encryption, auth, storage
+└── widgets/                # Reusable UI components
 ```
 
 ---
 
-## 📱 Android Version Targeting
+## 🚀 Getting Started
 
-- `minSdkVersion`: **23** (Android 6.0 Marshmallow)
-- `targetSdkVersion`: **35** (Android 15)
-- `compileSdkVersion`: **35**
+### 📋 Prerequisites
+
+- Flutter 3.19 or higher
+- Dart SDK
+- Android Studio or VS Code
+- Android device or emulator (API 23+)
+
+### 🧑‍💻 Installation
+
+```bash
+git clone https://github.com/KavyaJP/PasswordManagerAndroid.git
+cd PasswordManagerAndroid
+flutter pub get
+flutter run
+```
+
+Note: You will have to give your own SHA-1 Key to OAuth Client of google if you want google sign in features to work
 
 ---
 
-## 🔒 Security Notes
+## 🔐 Security Implementation
 
-- All passwords are AES-encrypted before storing locally or backing up
-- Master password is securely stored using flutter_secure_storage
-- Encrypted files are uploaded to Google Drive using SAF (user-picked location)
+- AES-256 encryption for password data
+- Master password stored securely using `flutter_secure_storage`
+- Backups are encrypted and uploaded only after user confirmation
+- Files are handled via Android's Storage Access Framework (SAF)
+
+---
+
+## 📱 Android Target
+
+- **Min SDK**: 23 (Android 6.0)
+- **Target SDK**: 35 (Android 15)
+- **Compile SDK**: 35
+
+---
+
+## 🧪 Testing
+
+- Manual testing on Android emulators and physical devices
+- Master password verification and backup integrity tested
+- File encryption and decryption verified against tampering
+
+---
+
+## 🔧 Features Yet to Be Implemented
+
+Here are some suggested features that can improve the app further. They are divided into practical, security-focused, and UX-related categories.
+
+---
+
+- [ ] **Windows Support**
+- [ ] **Linux Support**
+
+### ✅ Practical Features
+
+- [x] **Search & Filter Vault**
+   - Search by service, username, or note.
+   - Filter favorites or entries with images only.
+
+- [ ] **Category/Folder Support**
+   - Organize entries under tags or folders like “Finance,” “Social,” “Crypto,” etc.
+
+- [ ] **Password Generator**
+   - Built-in secure password generator with configurable rules (length, symbols, etc.).
+
+- [ ] **Auto-fill Integration (Android)**
+   - Support Android’s autofill framework for direct login to apps and browsers.
+
+- [ ] **QR Code Support**
+   - Generate QR codes for credentials.
+   - Scan QR codes to import (e.g., crypto wallets, Wi-Fi logins).
+
+---
+
+### 🔐 Security-Focused Features
+
+- [ ] **Field-Level Encryption**
+   - Encrypt sensitive fields like password and notes separately.
+
+- [ ] **Self-Destruct Vault**
+   - Option to wipe vault after X failed biometric or PIN attempts.
+
+- [ ] **Encrypted Export Format**
+   - Allow exporting vault as `.vault` file encrypted with a passphrase.
+
+- [ ] **Security Logs**
+   - Track vault access times, modification history, and restore logs.
+
+---
+
+### 🌟 UX & UI Improvements
+
+- [x] **Dark Mode Toggle**
+   - Manual toggle in-app (if not already following system).
+
+- [x] **Cloud Sync to User’s Own Google Drive Folder**
+   - Let users store backups in visible Drive folders instead of `appDataFolder`.
+
+- [ ] **In-app Onboarding / Walkthrough**
+   - A short guide for new users explaining features like adding entries, backup, etc.
+
+- [ ] **Backup Reminder**
+   - Show periodic reminders to backup vault (banner or notification).
+
+- [ ] **Undo Delete**
+   - Provide undo option for a few seconds after deleting an entry.
+
+- [x] **Biometric Timeout**
+   - Auto-lock the vault after X minutes of inactivity, requiring fingerprint again.
 
 ---
 
 ## 📜 License
 
 MIT License © 2025
+
+---
+
+## 🙌 Contributions
+
+Contributions are welcome! Feel free to fork the repo and submit pull requests.  
+For bugs or feature suggestions, open an [issue](https://github.com/KavyaJP/PasswordManagerAndroid/issues).
