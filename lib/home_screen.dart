@@ -111,29 +111,30 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
           existingEntry: entry,
-          onSave: ({
-            required String id,
-            required String service,
-            required String username,
-            required String password,
-            String? note,
-            required List<String> imagePaths,
-          }) {
-            final updated = PasswordEntry(
-              id: id,
-              service: service,
-              username: username,
-              password: password,
-              note: note,
-              imagePaths: imagePaths,
-              isFavorite: entry.isFavorite, // retain favorite flag
-            );
-            final index = _entries.indexWhere((e) => e.id == id);
-            if (index != -1) {
-              _entries[index] = updated;
-              _saveAndRefresh();
-            }
-          },
+          onSave:
+              ({
+                required String id,
+                required String service,
+                required String username,
+                required String password,
+                String? note,
+                required List<String> imagePaths,
+              }) {
+                final updated = PasswordEntry(
+                  id: id,
+                  service: service,
+                  username: username,
+                  password: password,
+                  note: note,
+                  imagePaths: imagePaths,
+                  isFavorite: entry.isFavorite, // retain favorite flag
+                );
+                final index = _entries.indexWhere((e) => e.id == id);
+                if (index != -1) {
+                  _entries[index] = updated;
+                  _saveAndRefresh();
+                }
+              },
         ),
       ),
     );
@@ -644,9 +645,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                   icon: const Icon(Icons.copy, size: 18),
                                   tooltip: "Copy Password",
                                   onPressed: () {
-                                    Clipboard.setData(ClipboardData(text: entry.password));
+                                    Clipboard.setData(
+                                      ClipboardData(text: entry.password),
+                                    );
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text("Password copied")),
+                                      const SnackBar(
+                                        content: Text("Password copied"),
+                                      ),
                                     );
                                   },
                                 ),
@@ -721,14 +726,16 @@ class VaultBackupManager {
       final client = GoogleAuthClient(authHeaders);
       final driveApi = drive.DriveApi(client);
 
-      // Delete old backup(s)
+      // 1. Delete old backup files and images
       final fileList = await driveApi.files.list(spaces: 'appDataFolder');
       for (final file in fileList.files ?? []) {
-        if (file.name == 'vault_backup.json') {
+        if (file.name == 'vault_backup.json' ||
+            file.name.startsWith('vault_image_')) {
           await driveApi.files.delete(file.id!);
         }
       }
 
+      // 2. Upload main JSON
       final fileToUpload = await createBackupFile(entries);
       final media = drive.Media(
         fileToUpload.openRead(),
@@ -739,38 +746,91 @@ class VaultBackupManager {
         ..parents = ['appDataFolder'];
 
       await driveApi.files.create(driveFile, uploadMedia: media);
-      debugPrint("✅ Backup uploaded to Google Drive");
+
+      // 3. Upload each image
+      for (final entry in entries) {
+        for (int i = 0; i < entry.imagePaths.length; i++) {
+          final imageFile = File(entry.imagePaths[i]);
+          if (!imageFile.existsSync()) continue;
+
+          final media = drive.Media(
+            imageFile.openRead(),
+            imageFile.lengthSync(),
+          );
+
+          final imageDriveFile = drive.File()
+            ..name = 'vault_image_${entry.id}_$i.png'
+            ..parents = ['appDataFolder'];
+
+          await driveApi.files.create(imageDriveFile, uploadMedia: media);
+        }
+      }
+
+      debugPrint("✅ Backup (including images) uploaded to Google Drive");
     } catch (e) {
       debugPrint("❌ Failed to upload to Drive: $e");
     }
   }
 
   static Future<List<PasswordEntry>> restoreFromDrive(
-    GoogleSignInAccount googleUser,
-  ) async {
+      GoogleSignInAccount googleUser,
+      ) async {
     final authHeaders = await googleUser.authHeaders;
     final client = GoogleAuthClient(authHeaders);
     final driveApi = drive.DriveApi(client);
 
+    // Fetch file list
     final fileList = await driveApi.files.list(spaces: 'appDataFolder');
-    final file = fileList.files?.firstWhere(
-      (f) => f.name == 'vault_backup.json',
+    final allFiles = fileList.files ?? [];
+
+    // Find the backup file
+    final backupFile = allFiles.firstWhere(
+          (f) => f.name == 'vault_backup.json',
+      orElse: () => throw Exception("Backup file not found"),
     );
 
-    if (file == null || file.id == null) {
-      throw Exception("Backup file not found");
+    if (backupFile.id == null) {
+      throw Exception("Backup file missing ID.");
     }
 
-    final media =
-        await driveApi.files.get(
-              file.id!,
-              downloadOptions: drive.DownloadOptions.fullMedia,
-            )
-            as drive.Media;
+    final media = await driveApi.files.get(
+      backupFile.id!,
+      downloadOptions: drive.DownloadOptions.fullMedia,
+    ) as drive.Media;
+
     final content = await utf8.decoder.bind(media.stream).join();
     final jsonData = jsonDecode(content) as List<dynamic>;
+    final restoredEntries = jsonData.map((e) => PasswordEntry.fromJson(e)).toList();
 
-    return jsonData.map((e) => PasswordEntry.fromJson(e)).toList();
+    // Restore images
+    final tempDir = await getTemporaryDirectory();
+
+    for (final entry in restoredEntries) {
+      entry.imagePaths.clear();
+      int index = 0;
+
+      while (true) {
+        final expectedName = 'vault_image_${entry.id}_$index.png';
+        final matching = allFiles.where((f) => f.name == expectedName).toList();
+
+        if (matching.isEmpty || matching.first.id == null) break;
+
+        final imageMedia = await driveApi.files.get(
+          matching.first.id!,
+          downloadOptions: drive.DownloadOptions.fullMedia,
+        ) as drive.Media;
+
+        final filePath = '${tempDir.path}/$expectedName';
+        final imageFile = File(filePath);
+        final sink = imageFile.openWrite();
+        await imageMedia.stream.pipe(sink);
+
+        entry.imagePaths.add(filePath);
+        index++;
+      }
+    }
+
+    return restoredEntries;
   }
 }
 
