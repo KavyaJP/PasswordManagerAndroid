@@ -123,9 +123,6 @@ Here are some suggested features that can improve the app further. They are divi
 - [ ] **Field-Level Encryption**
    - Encrypt sensitive fields like password and notes separately.
 
-- [ ] **Self-Destruct Vault**
-   - Option to wipe vault after X failed biometric or PIN attempts.
-
 - [ ] **Encrypted Export Format**
    - Allow exporting vault as `.vault` file encrypted with a passphrase.
 
