@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 
 class AddEntryScreen extends StatefulWidget {
   final PasswordEntry? existingEntry;
+  final String? prefilledService;
+
   final void Function({
     required String id,
     required String service,
@@ -15,7 +17,12 @@ class AddEntryScreen extends StatefulWidget {
   })
   onSave;
 
-  const AddEntryScreen({super.key, this.existingEntry, required this.onSave});
+  const AddEntryScreen({
+    super.key,
+    this.existingEntry,
+    this.prefilledService,
+    required this.onSave,
+  });
 
   @override
   State<AddEntryScreen> createState() => _AddEntryScreenState();
@@ -38,6 +45,8 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       _passwordController.text = widget.existingEntry!.password;
       _noteController.text = widget.existingEntry!.note ?? '';
       _selectedImagePaths = widget.existingEntry?.imagePaths ?? [];
+    } else if (widget.prefilledService != null) {
+      _serviceController.text = widget.prefilledService!;
     }
   }
 

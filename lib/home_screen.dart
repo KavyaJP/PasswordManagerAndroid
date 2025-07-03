@@ -78,31 +78,31 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
-  void _openAddEntryForm() {
+  void _openAddEntryForm({String? prefilledService}) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
-          onSave:
-              ({
-                required String id,
-                required String service,
-                required String username,
-                required String password,
-                String? note,
-                required List<String> imagePaths,
-              }) {
-                final entry = PasswordEntry(
-                  id: id,
-                  service: service,
-                  username: username,
-                  password: password,
-                  note: note,
-                  imagePaths: imagePaths,
-                );
-                _entries.add(entry);
-                _saveAndRefresh();
-              },
+          prefilledService: prefilledService,
+          onSave: ({
+            required String id,
+            required String service,
+            required String username,
+            required String password,
+            String? note,
+            required List<String> imagePaths,
+          }) {
+            final entry = PasswordEntry(
+              id: id,
+              service: service,
+              username: username,
+              password: password,
+              note: note,
+              imagePaths: imagePaths,
+            );
+            _entries.add(entry);
+            _saveAndRefresh();
+          },
         ),
       ),
     );
@@ -682,7 +682,7 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('Lock Now'),
               onTap: () {
                 Navigator.pop(context);
-                widget.onManualLock(); // 👈 Triggers lock
+                widget.onManualLock();
               },
             ),
             ListTile(
@@ -738,76 +738,98 @@ class _HomeScreenState extends State<HomeScreen> {
       body: grouped.isEmpty
           ? const Center(child: Text("No passwords found."))
           : ListView(
-              children: grouped.entries.map((entryGroup) {
-                return ExpansionTile(
-                  title: Text(
-                    entryGroup.key,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  children: entryGroup.value.map((entry) {
-                    return ListTile(
-                      title: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: grouped.entries.map((entryGroup) {
+          return ExpansionTile(
+            title: Text(
+              entryGroup.key,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            children: [
+              ...entryGroup.value.map((entry) {
+                return ListTile(
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.vpn_key),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: Icon(
-                                  _visiblePasswords.contains(entry.id)
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    if (_visiblePasswords.contains(entry.id)) {
-                                      _visiblePasswords.remove(entry.id);
-                                    } else {
-                                      _visiblePasswords.add(entry.id);
-                                    }
-                                  });
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.edit),
-                                onPressed: () => _openEditEntryForm(entry),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete),
-                                onPressed: () => _confirmDelete(entry),
-                              ),
-                            ],
-                          ),
+                          const Icon(Icons.vpn_key),
+                          const SizedBox(width: 8),
                           IconButton(
                             icon: Icon(
-                              entry.isFavorite ? Icons.star : Icons.star_border,
-                              color: entry.isFavorite ? Colors.amber : null,
+                              _visiblePasswords.contains(entry.id)
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
                             ),
-                            tooltip: entry.isFavorite
-                                ? "Unfavorite"
-                                : "Mark as Favorite",
                             onPressed: () {
                               setState(() {
-                                entry.isFavorite = !entry.isFavorite;
-                                _saveAndRefresh(); // Persist favorite status
+                                if (_visiblePasswords.contains(entry.id)) {
+                                  _visiblePasswords.remove(entry.id);
+                                } else {
+                                  _visiblePasswords.add(entry.id);
+                                }
                               });
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => _openEditEntryForm(entry),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => _confirmDelete(entry),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          entry.isFavorite ? Icons.star : Icons.star_border,
+                          color: entry.isFavorite ? Colors.amber : null,
+                        ),
+                        tooltip: entry.isFavorite ? "Unfavorite" : "Mark as Favorite",
+                        onPressed: () {
+                          setState(() {
+                            entry.isFavorite = !entry.isFavorite;
+                            _saveAndRefresh();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text("Username: ${entry.username}"),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 18),
+                            tooltip: "Copy Username",
+                            onPressed: () async {
+                              Clipboard.setData(ClipboardData(text: entry.username));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Username copied")),
+                              );
                             },
                           ),
                         ],
                       ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text("Username: ${entry.username}"),
-                              ),
-                              IconButton(
+                          Expanded(
+                            child: Text(
+                              "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
+                            ),
+                          ),
+                          IgnorePointer(
+                            ignoring: !_visiblePasswords.contains(entry.id),
+                            child: Opacity(
+                              opacity: _visiblePasswords.contains(entry.id) ? 1.0 : 0.0,
+                              child: IconButton(
                                 icon: const Icon(Icons.copy, size: 18),
-                                tooltip: "Copy Username",
-                                onPressed: () async {
+                                tooltip: "Copy Password",
+                                onPressed: () {
                                   Clipboard.setData(
                                     ClipboardData(text: entry.password),
                                   );
@@ -816,95 +838,60 @@ class _HomeScreenState extends State<HomeScreen> {
                                       content: Text("Password copied"),
                                     ),
                                   );
-                                  // Auto-clear clipboard (if timeout is not 0)
-                                  final prefs =
-                                      await SharedPreferences.getInstance();
-                                  final clearTime =
-                                      prefs.getInt('clipboardClearTime') ?? 10;
-                                  if (clearTime > 0) {
-                                    Future.delayed(
-                                      Duration(seconds: clearTime),
-                                      () async {
-                                        final current = await Clipboard.getData(
-                                          'text/plain',
-                                        );
-                                        // Only clear if clipboard still has the same value
-                                        if (current?.text == entry.password) {
-                                          Clipboard.setData(
-                                            const ClipboardData(text: ''),
-                                          );
-                                        }
-                                      },
-                                    );
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  "Password: ${_visiblePasswords.contains(entry.id) ? entry.password : "••••••••"}",
-                                ),
-                              ),
-                              if (_visiblePasswords.contains(entry.id))
-                                IconButton(
-                                  icon: const Icon(Icons.copy, size: 18),
-                                  tooltip: "Copy Password",
-                                  onPressed: () {
-                                    Clipboard.setData(
-                                      ClipboardData(text: entry.password),
-                                    );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Password copied"),
-                                      ),
-                                    );
-                                  },
-                                ),
-                            ],
-                          ),
-                          if (entry.note != null && entry.note!.isNotEmpty)
-                            Text("Note: ${entry.note}"),
-                          if (entry.imagePaths.isNotEmpty)
-                            SizedBox(
-                              height: 100,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: entry.imagePaths.length,
-                                itemBuilder: (context, index) {
-                                  final path = entry.imagePaths[index];
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (_) => Dialog(
-                                            child: Image.file(File(path)),
-                                          ),
-                                        );
-                                      },
-                                      child: Image.file(
-                                        File(path),
-                                        width: 100,
-                                        height: 100,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                  );
                                 },
                               ),
                             ),
+                          ),
                         ],
                       ),
-                      isThreeLine: true,
-                    );
-                  }).toList(),
+                      if (entry.note != null && entry.note!.isNotEmpty)
+                        Text("Note: ${entry.note}"),
+                      if (entry.imagePaths.isNotEmpty)
+                        SizedBox(
+                          height: 100,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: entry.imagePaths.length,
+                            itemBuilder: (context, index) {
+                              final path = entry.imagePaths[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: GestureDetector(
+                                  onTap: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) => Dialog(
+                                        child: Image.file(File(path)),
+                                      ),
+                                    );
+                                  },
+                                  child: Image.file(
+                                    File(path),
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                  isThreeLine: true,
                 );
               }).toList(),
-            ),
+              ListTile(
+                leading: const Icon(Icons.add),
+                title: Text("Add another for ${entryGroup.key}"),
+                onTap: () => _openAddEntryForm(
+                  prefilledService: entryGroup.key,
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddEntryForm,
         child: const Icon(Icons.add),
