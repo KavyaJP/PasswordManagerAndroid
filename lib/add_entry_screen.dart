@@ -260,7 +260,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 decoration: InputDecoration(
                   labelText: "Password",
                   suffixIcon: IconButton(
-                    icon: const Icon(Icons.refresh),
+                    icon: Image.asset(
+                      Theme.of(context).brightness == Brightness.dark
+                          ? 'icons/password_generate_white.png'
+                          : 'icons/password_generate_black.png',
+                      width: 24,
+                      height: 24,
+                    ),
                     tooltip: "Generate Password",
                     onPressed: _showPasswordGeneratorDialog,
                   ),

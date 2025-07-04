@@ -44,3 +44,5 @@ flutter:
 
   assets:
     - icon.png
+    - icons/password_generate_white.png
+    - icons/password_generate_black.png
