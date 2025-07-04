@@ -142,7 +142,7 @@ Here are some suggested features that can improve the app further. They are divi
 - [ ] **In-app Onboarding / Walkthrough**
    - A short guide for new users explaining features like adding entries, backup, etc.
 
-- [ ] **Backup Reminder**
+- [x] **Backup Reminder**
    - Show periodic reminders to backup vault (banner or notification).
 
 - [x] **Undo Delete**
