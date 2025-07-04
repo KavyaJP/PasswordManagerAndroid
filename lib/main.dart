@@ -5,6 +5,7 @@ import 'package:local_auth/local_auth.dart';
 import 'lock_screen.dart';
 import 'home_screen.dart';
 import 'settings_screen.dart';
+import 'onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -108,6 +109,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           darkTheme: ThemeData.dark(),
           themeMode: mode,
           routes: {
+            '/home': (context) => HomeScreen(
+              onThemeChanged: (_) {},
+              isDarkTheme: mode == ThemeMode.dark,
+              onManualLock: () {},
+            ),
             '/settings': (context) => SettingsScreen(
               onThemeChanged: _toggleTheme,
               isDarkTheme: mode == ThemeMode.dark,

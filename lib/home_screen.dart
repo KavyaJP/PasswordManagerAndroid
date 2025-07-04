@@ -11,6 +11,8 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'onboarding_screen.dart';
 
 import 'add_entry_screen.dart';
 import 'models/password_entry.dart';
@@ -22,7 +24,7 @@ enum FilterType { both, service, username }
 class HomeScreen extends StatefulWidget {
   final void Function(bool) onThemeChanged;
   final bool isDarkTheme;
-  final VoidCallback onManualLock; // 👈 new
+  final VoidCallback onManualLock;
 
   const HomeScreen({
     super.key,
@@ -44,13 +46,31 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showOnlyFavorites = false;
   bool _groupByCategory = false;
   bool _showBackupReminder = false;
+  bool _showOnboarding = false;
 
   @override
   void initState() {
     super.initState();
+    _checkFirstLaunch();
     _loadVault();
     _checkSignedInUser();
     _checkBackupReminder();
+  }
+
+  Future<void> _checkFirstLaunch() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool? hasSeenOnboarding = prefs.getBool('hasSeenOnboarding');
+
+    if (hasSeenOnboarding == null || !hasSeenOnboarding) {
+      await prefs.setBool('hasSeenOnboarding', true);
+      setState(() {
+        _showOnboarding = true;
+      });
+    } else {
+      setState(() {
+        _showOnboarding = false;
+      });
+    }
   }
 
   Future<void> _checkSignedInUser() async {
@@ -556,6 +576,14 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final grouped = _groupByCategory ? _groupedByCategory() : _groupedEntries();
+    if (_showOnboarding) {
+      Future.microtask(() {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => OnboardingScreen()),
+        );
+      });
+      return Container(); // empty widget while redirecting
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text("🔐 Your Vault"),

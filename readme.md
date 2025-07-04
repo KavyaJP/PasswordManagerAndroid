@@ -139,7 +139,7 @@ Here are some suggested features that can improve the app further. They are divi
 - [x] **Cloud Sync to User’s Own Google Drive Folder**
    - Let users store backups in visible Drive folders instead of `appDataFolder`.
 
-- [ ] **In-app Onboarding / Walkthrough**
+- [x] **In-app Onboarding / Walkthrough**
    - A short guide for new users explaining features like adding entries, backup, etc.
 
 - [x] **Backup Reminder**

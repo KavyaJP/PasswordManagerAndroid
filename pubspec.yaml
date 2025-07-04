@@ -27,6 +27,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   file_picker: ^10.2.0
   device_info_plus: ^10.1.0
+  tutorial_coach_mark: ^1.2.4
 
 dev_dependencies:
   flutter_test:
