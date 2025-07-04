@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LockScreen extends StatefulWidget {
   final VoidCallback onAuthenticated;
@@ -16,12 +17,22 @@ class _LockScreenState extends State<LockScreen> {
   @override
   void initState() {
     super.initState();
+    _checkIfLockEnabled();
     _authenticate(); // Trigger authentication as soon as screen opens
   }
 
-  Future<void> _authenticate() async {
-    print("🔐 Starting authentication...");
+  Future<void> _checkIfLockEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isLockEnabled = prefs.getBool('lock_enabled') ?? false;
 
+    if (isLockEnabled) {
+      _authenticate();
+    } else {
+      widget.onAuthenticated();
+    }
+  }
+
+  Future<void> _authenticate() async {
     try {
       bool didAuthenticate = await auth.authenticate(
         localizedReason: 'Authenticate to unlock your password vault',
@@ -30,14 +41,11 @@ class _LockScreenState extends State<LockScreen> {
           stickyAuth: true,
         ),
       );
-
-      print("✅ Authentication result: $didAuthenticate");
-
       if (didAuthenticate) {
         widget.onAuthenticated();
       }
     } catch (e) {
-      print("❌ Authentication error: $e");
+      _authenticate();
     }
   }
 
