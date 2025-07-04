@@ -42,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = "";
   FilterType _selectedFilter = FilterType.both;
   bool _showOnlyFavorites = false;
+  bool _groupByCategory = false;
 
   @override
   void initState() {
@@ -351,6 +352,22 @@ class _HomeScreenState extends State<HomeScreen> {
     return grouped;
   }
 
+  Map<String, List<PasswordEntry>> _groupedByCategory() {
+    final filtered = _filterEntries(); // Use your existing filtered list
+    final grouped = <String, List<PasswordEntry>>{};
+
+    for (final entry in filtered) {
+      final key = (entry.category?.isNotEmpty ?? false)
+          ? entry.category!
+          : "Uncategorized";
+
+      grouped.putIfAbsent(key, () => []);
+      grouped[key]!.add(entry);
+    }
+
+    return grouped;
+  }
+
   Future<void> _downloadVaultLocally() async {
     try {
       // Request proper permission first
@@ -494,24 +511,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final grouped = _groupedEntries();
+    final grouped = _groupByCategory ? _groupedByCategory() : _groupedEntries();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("🔐 Your Vault"),
         actions: [
-          IconButton(
-            icon: Icon(
-              _showOnlyFavorites ? Icons.star : Icons.star_border,
-              color: _showOnlyFavorites ? Colors.amber : Colors.white,
-            ),
-            tooltip: _showOnlyFavorites
-                ? 'Showing Favorites'
-                : 'Show Favorites Only',
-            onPressed: () {
-              setState(() => _showOnlyFavorites = !_showOnlyFavorites);
-            },
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: GestureDetector(
@@ -749,6 +754,28 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 _restoreVaultFromLocal();
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                _showOnlyFavorites ? Icons.star : Icons.star_border,
+                color: _showOnlyFavorites ? Colors.amber : null,
+              ),
+              title: Text(_showOnlyFavorites ? 'Showing Favorites' : 'Show Favorites Only'),
+              onTap: () {
+                setState(() => _showOnlyFavorites = !_showOnlyFavorites);
+                Navigator.pop(context); // Optional: close drawer after tap
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                _groupByCategory ? Icons.folder : Icons.folder_open,
+                color: _groupByCategory ? Colors.orange : null,
+              ),
+              title: Text(_groupByCategory ? "Grouped by Category" : "Group by Category"),
+              onTap: () {
+                setState(() => _groupByCategory = !_groupByCategory);
+                Navigator.pop(context); // Optional: close drawer after tap
               },
             ),
           ],
