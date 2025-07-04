@@ -79,20 +79,22 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
-  void _openAddEntryForm({String? prefilledService}) {
-    final allCategories = _entries
-        .map((e) => e.category)
-        .where((c) => c != null && c.trim().isNotEmpty)
-        .cast<String>()
-        .toSet()
-        .toList();
-
+  void _openAddEntryForm({
+    String? prefilledService,
+    String? prefilledCategory,
+  }) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
           prefilledService: prefilledService,
-          existingCategories: allCategories,
+          prefilledCategory: prefilledCategory,
+          existingCategories: _entries
+              .map((e) => e.category)
+              .where((e) => e != null && e.trim().isNotEmpty)
+              .map((e) => e!.trim())
+              .toSet()
+              .toList(),
           onSave: ({
             required String id,
             required String service,
@@ -931,7 +933,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 leading: const Icon(Icons.add),
                 title: Text("Add another for ${entryGroup.key}"),
                 onTap: () => _openAddEntryForm(
-                  prefilledService: entryGroup.key,
+                  prefilledService: _groupByCategory ? null : entryGroup.key,
+                  prefilledCategory: _groupByCategory ? entryGroup.key : null,
                 ),
               ),
             ],
