@@ -106,7 +106,7 @@ Here are some suggested features that can improve the app further. They are divi
 - [x] **Category/Folder Support**
    - Organize entries under tags or folders like “Finance,” “Social,” “Crypto,” etc.
 
-- [ ] **Password Generator**
+- [x] **Password Generator**
    - Built-in secure password generator with configurable rules (length, symbols, etc.).
 
 - [ ] **Auto-fill Integration (Android)**

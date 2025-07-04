@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'models/password_entry.dart';
+import 'utils/password_generator.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
@@ -106,6 +107,126 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     }
   }
 
+  void _showPasswordGeneratorDialog() {
+    int length = 16;
+    bool upper = true;
+    bool lower = true;
+    bool numbers = true;
+    bool symbols = true;
+    String generated = '';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            title: const Text("🔐 Generate Password"),
+            content: SingleChildScrollView( // 👈 Prevents overflow
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Slider(
+                          value: length.toDouble(),
+                          min: 6,
+                          max: 64,
+                          divisions: 58,
+                          label: length.toString(),
+                          onChanged: (value) {
+                            setState(() {
+                              length = value.toInt();
+                            });
+                          },
+                        ),
+                      ),
+                      SizedBox(
+                        width: 50,
+                        child: TextField(
+                          controller: TextEditingController(text: length.toString()),
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                          ),
+                          onSubmitted: (value) {
+                            final intValue = int.tryParse(value);
+                            if (intValue != null && intValue >= 6 && intValue <= 64) {
+                              setState(() {
+                                length = intValue;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  CheckboxListTile(
+                    title: const Text("Include Uppercase"),
+                    value: upper,
+                    onChanged: (val) => setState(() => upper = val!),
+                  ),
+                  CheckboxListTile(
+                    title: const Text("Include Lowercase"),
+                    value: lower,
+                    onChanged: (val) => setState(() => lower = val!),
+                  ),
+                  CheckboxListTile(
+                    title: const Text("Include Numbers"),
+                    value: numbers,
+                    onChanged: (val) => setState(() => numbers = val!),
+                  ),
+                  CheckboxListTile(
+                    title: const Text("Include Symbols"),
+                    value: symbols,
+                    onChanged: (val) => setState(() => symbols = val!),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final result = PasswordGenerator.generate(
+                        length: length,
+                        includeUpper: upper,
+                        includeLower: lower,
+                        includeNumbers: numbers,
+                        includeSymbols: symbols,
+                      );
+                      setState(() => generated = result);
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text("Generate"),
+                  ),
+                  if (generated.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    SelectableText(
+                      generated,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              if (generated.isNotEmpty)
+                TextButton(
+                  onPressed: () {
+                    _passwordController.text = generated;
+                    Navigator.pop(context);
+                  },
+                  child: const Text("Use Password"),
+                ),
+            ],
+          );
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -136,10 +257,16 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
               ),
               TextFormField(
                 controller: _passwordController,
-                decoration: const InputDecoration(labelText: "Password"),
+                decoration: InputDecoration(
+                  labelText: "Password",
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: "Generate Password",
+                    onPressed: _showPasswordGeneratorDialog,
+                  ),
+                ),
                 obscureText: true,
-                validator: (value) =>
-                    value == null || value.isEmpty ? "Required" : null,
+                validator: (value) => value == null || value.isEmpty ? "Required" : null,
               ),
               TextFormField(
                 controller: _noteController,
