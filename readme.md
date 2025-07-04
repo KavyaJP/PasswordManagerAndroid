@@ -145,7 +145,7 @@ Here are some suggested features that can improve the app further. They are divi
 - [ ] **Backup Reminder**
    - Show periodic reminders to backup vault (banner or notification).
 
-- [ ] **Undo Delete**
+- [x] **Undo Delete**
    - Provide undo option for a few seconds after deleting an entry.
 
 - [x] **Biometric Timeout**

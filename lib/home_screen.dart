@@ -181,7 +181,35 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _deleteEntry(entry);
+
+              final index = _entries.indexOf(entry);
+              setState(() {
+                _entries.removeAt(index);
+              });
+
+              // Show SnackBar with Undo
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Deleted entry for ${entry.service}"),
+                  duration: const Duration(seconds: 5),
+                  action: SnackBarAction(
+                    label: "Undo",
+                    onPressed: () {
+                      setState(() {
+                        _entries.insert(index, entry);
+                      });
+                      _saveAndRefresh();
+                    },
+                  ),
+                ),
+              );
+
+              // Finalize deletion if Undo not pressed
+              Future.delayed(const Duration(seconds: 5), () {
+                if (!_entries.contains(entry)) {
+                  _saveAndRefresh();
+                }
+              });
             },
             child: const Text("Delete", style: TextStyle(color: Colors.red)),
           ),
