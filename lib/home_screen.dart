@@ -79,11 +79,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openAddEntryForm({String? prefilledService}) {
+    final allCategories = _entries
+        .map((e) => e.category)
+        .where((c) => c != null && c.trim().isNotEmpty)
+        .cast<String>()
+        .toSet()
+        .toList();
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
           prefilledService: prefilledService,
+          existingCategories: allCategories,
           onSave: ({
             required String id,
             required String service,
@@ -91,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
             required String password,
             String? note,
             required List<String> imagePaths,
+            String? category,
           }) {
             final entry = PasswordEntry(
               id: id,
@@ -99,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
               password: password,
               note: note,
               imagePaths: imagePaths,
+              category: category,
             );
             _entries.add(entry);
             _saveAndRefresh();
@@ -109,35 +119,44 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openEditEntryForm(PasswordEntry entry) {
+    final allCategories = _entries
+        .map((e) => e.category)
+        .where((c) => c != null && c.trim().isNotEmpty)
+        .cast<String>()
+        .toSet()
+        .toList();
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddEntryScreen(
           existingEntry: entry,
-          onSave:
-              ({
-                required String id,
-                required String service,
-                required String username,
-                required String password,
-                String? note,
-                required List<String> imagePaths,
-              }) {
-                final updated = PasswordEntry(
-                  id: id,
-                  service: service,
-                  username: username,
-                  password: password,
-                  note: note,
-                  imagePaths: imagePaths,
-                  isFavorite: entry.isFavorite, // retain favorite flag
-                );
-                final index = _entries.indexWhere((e) => e.id == id);
-                if (index != -1) {
-                  _entries[index] = updated;
-                  _saveAndRefresh();
-                }
-              },
+          existingCategories: allCategories,
+          onSave: ({
+            required String id,
+            required String service,
+            required String username,
+            required String password,
+            String? note,
+            required List<String> imagePaths,
+            String? category,
+          }) {
+            final updated = PasswordEntry(
+              id: id,
+              service: service,
+              username: username,
+              password: password,
+              note: note,
+              imagePaths: imagePaths,
+              isFavorite: entry.isFavorite,
+              category: category,
+            );
+            final index = _entries.indexWhere((e) => e.id == id);
+            if (index != -1) {
+              _entries[index] = updated;
+              _saveAndRefresh();
+            }
+          },
         ),
       ),
     );

@@ -6,6 +6,7 @@ class PasswordEntry {
   final String? note;
   bool isFavorite;
   final List<String> imagePaths;
+  final String? category; // Optional
 
   PasswordEntry({
     required this.id,
@@ -15,6 +16,7 @@ class PasswordEntry {
     this.note,
     this.isFavorite = false,
     this.imagePaths = const [],
+    this.category,
   });
 
   PasswordEntry copyWith({
@@ -25,6 +27,7 @@ class PasswordEntry {
     String? note,
     bool? isFavorite,
     List<String>? imagePaths,
+    String? category, // ✅
   }) {
     return PasswordEntry(
       id: id ?? this.id,
@@ -34,8 +37,10 @@ class PasswordEntry {
       note: note ?? this.note,
       isFavorite: isFavorite ?? this.isFavorite,
       imagePaths: imagePaths ?? this.imagePaths,
+      category: category ?? this.category, // ✅
     );
   }
+
   Map<String, dynamic> toJson() => {
     "id": id,
     "service": service,
@@ -44,6 +49,7 @@ class PasswordEntry {
     "note": note,
     "isFavorite": isFavorite,
     "imagePaths": imagePaths,
+    "category": category, // ✅
   };
 
   factory PasswordEntry.fromJson(Map<String, dynamic> json) => PasswordEntry(
@@ -54,5 +60,6 @@ class PasswordEntry {
     note: json["note"],
     isFavorite: json["isFavorite"] ?? false,
     imagePaths: List<String>.from(json["imagePaths"] ?? []),
+    category: json["category"], // ✅
   );
 }

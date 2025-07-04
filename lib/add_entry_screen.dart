@@ -6,21 +6,25 @@ import 'package:image_picker/image_picker.dart';
 class AddEntryScreen extends StatefulWidget {
   final PasswordEntry? existingEntry;
   final String? prefilledService;
+  final String? prefilledCategory;
+  final List<String> existingCategories;
 
   final void Function({
-    required String id,
-    required String service,
-    required String username,
-    required String password,
-    String? note,
-    required List<String> imagePaths,
-  })
-  onSave;
+  required String id,
+  required String service,
+  required String username,
+  required String password,
+  String? note,
+  required List<String> imagePaths,
+  String? category,
+  }) onSave;
 
   const AddEntryScreen({
     super.key,
     this.existingEntry,
     this.prefilledService,
+    this.prefilledCategory,
+    this.existingCategories = const [],
     required this.onSave,
   });
 
@@ -35,18 +39,27 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
   final _passwordController = TextEditingController();
   final _noteController = TextEditingController();
   List<String> _selectedImagePaths = [];
+  final _categoryController = TextEditingController();
+  String? _selectedCategoryFromDropdown;
 
   @override
   void initState() {
     super.initState();
+
     if (widget.existingEntry != null) {
       _serviceController.text = widget.existingEntry!.service;
       _usernameController.text = widget.existingEntry!.username;
       _passwordController.text = widget.existingEntry!.password;
       _noteController.text = widget.existingEntry!.note ?? '';
-      _selectedImagePaths = widget.existingEntry?.imagePaths ?? [];
-    } else if (widget.prefilledService != null) {
-      _serviceController.text = widget.prefilledService!;
+      _selectedImagePaths = widget.existingEntry!.imagePaths;
+      _categoryController.text = widget.existingEntry!.category ?? '';
+    } else {
+      if (widget.prefilledService != null) {
+        _serviceController.text = widget.prefilledService!;
+      }
+      if (widget.prefilledCategory != null) {
+        _categoryController.text = widget.prefilledCategory!;
+      }
     }
   }
 
@@ -56,14 +69,17 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     _noteController.dispose();
+    _categoryController.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      final id =
-          widget.existingEntry?.id ??
+      final id = widget.existingEntry?.id ??
           DateTime.now().millisecondsSinceEpoch.toString();
+
+      final trimmedCategory = _categoryController.text.trim();
+
       widget.onSave(
         id: id,
         service: _serviceController.text.trim(),
@@ -73,7 +89,9 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
             ? null
             : _noteController.text.trim(),
         imagePaths: _selectedImagePaths,
+        category: trimmedCategory.isEmpty ? null : trimmedCategory,
       );
+
       Navigator.pop(context);
     }
   }
@@ -127,6 +145,31 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 controller: _noteController,
                 decoration: const InputDecoration(labelText: "Note (Optional)"),
                 maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              Text("Category (Optional)", style: TextStyle(fontWeight: FontWeight.bold)),
+              DropdownButton<String>(
+                isExpanded: true,
+                hint: const Text("Select existing category"),
+                value: _selectedCategoryFromDropdown,
+                items: widget.existingCategories
+                    .toSet()
+                    .where((c) => c.trim().isNotEmpty)
+                    .map((category) => DropdownMenuItem(
+                  value: category,
+                  child: Text(category),
+                ))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCategoryFromDropdown = value;
+                    _categoryController.text = value ?? '';
+                  });
+                },
+              ),
+              TextFormField(
+                controller: _categoryController,
+                decoration: const InputDecoration(labelText: "Or enter new category"),
               ),
               const SizedBox(height: 16),
               Text(
