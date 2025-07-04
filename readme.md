@@ -32,7 +32,7 @@ It uses AES encryption and local Hive storage to protect user data, with optiona
 
 ```
 lib/
-├── main.dart                # App entry point
+├── main.dart               # App entry point
 ├── models/                 # Data models (e.g., Credential)
 ├── screens/                # UI screens (home, login, add/edit)
 ├── services/               # Business logic: encryption, auth, storage
