@@ -103,7 +103,7 @@ Here are some suggested features that can improve the app further. They are divi
    - Search by service, username, or note.
    - Filter favorites or entries with images only.
 
-- [ ] **Category/Folder Support**
+- [x] **Category/Folder Support**
    - Organize entries under tags or folders like “Finance,” “Social,” “Crypto,” etc.
 
 - [ ] **Password Generator**
