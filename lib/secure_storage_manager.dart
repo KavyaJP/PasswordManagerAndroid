@@ -1,8 +1,11 @@
-import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'models/password_entry.dart';
 import 'dart:io';
+import 'dart:convert';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:hive/hive.dart';
+
+import 'models/password_entry.dart';
 
 class DriveBackupManager {
   /// Saves the vault data as a JSON file locally and returns the file path
@@ -35,5 +38,10 @@ class SecureStorageManager {
 
   static Future<void> clearVault() async {
     await _storage.delete(key: _vaultKey);
+  }
+
+  Future<List<PasswordEntry>> getAllEntries() async {
+    final box = await Hive.openBox<PasswordEntry>('passwords');
+    return box.values.toList();
   }
 }

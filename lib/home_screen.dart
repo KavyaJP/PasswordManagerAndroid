@@ -12,12 +12,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'onboarding_screen.dart';
 
+import 'onboarding_screen.dart';
 import 'add_entry_screen.dart';
 import 'models/password_entry.dart';
 import 'secure_storage_manager.dart';
 import 'settings_screen.dart';
+import 'utils/vault_exporter.dart';
 
 enum FilterType { both, service, username }
 
@@ -573,6 +574,46 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _exportVault(BuildContext context) async {
+    final passphrase = await _promptForPassphrase(context);
+    if (passphrase == null || passphrase.isEmpty) return;
+
+    final entries = await SecureStorageManager().getAllEntries();
+    await VaultExporter.exportVault(context, entries, passphrase);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Vault exported successfully!')),
+    );
+  }
+
+  Future<String?> _promptForPassphrase(BuildContext context) async {
+    String passphrase = '';
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Enter Export Passphrase'),
+          content: TextField(
+            autofocus: true,
+            obscureText: true,
+            decoration: const InputDecoration(hintText: 'Passphrase'),
+            onChanged: (value) => passphrase = value,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, passphrase),
+              child: const Text('Export'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final grouped = _groupByCategory ? _groupedByCategory() : _groupedEntries();
@@ -825,6 +866,14 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 _restoreVaultFromLocal();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.download),
+              title: Text('Export Vault with a passphrase'),
+              onTap: () {
+                Navigator.pop(context); // close the drawer
+                _exportVault(context);
               },
             ),
             ListTile(

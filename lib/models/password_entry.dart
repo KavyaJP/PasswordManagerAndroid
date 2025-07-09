@@ -1,12 +1,32 @@
-class PasswordEntry {
+import 'package:hive/hive.dart';
+
+part 'password_entry.g.dart'; // Needed for code generation
+
+@HiveType(typeId: 0)
+class PasswordEntry extends HiveObject {
+  @HiveField(0)
   final String id;
+
+  @HiveField(1)
   final String service;
+
+  @HiveField(2)
   final String username;
+
+  @HiveField(3)
   final String password;
+
+  @HiveField(4)
   final String? note;
+
+  @HiveField(5)
   bool isFavorite;
+
+  @HiveField(6)
   final List<String> imagePaths;
-  final String? category; // Optional
+
+  @HiveField(7)
+  final String? category;
 
   PasswordEntry({
     required this.id,
@@ -27,7 +47,7 @@ class PasswordEntry {
     String? note,
     bool? isFavorite,
     List<String>? imagePaths,
-    String? category, // ✅
+    String? category,
   }) {
     return PasswordEntry(
       id: id ?? this.id,
@@ -37,7 +57,7 @@ class PasswordEntry {
       note: note ?? this.note,
       isFavorite: isFavorite ?? this.isFavorite,
       imagePaths: imagePaths ?? this.imagePaths,
-      category: category ?? this.category, // ✅
+      category: category ?? this.category,
     );
   }
 
@@ -49,7 +69,7 @@ class PasswordEntry {
     "note": note,
     "isFavorite": isFavorite,
     "imagePaths": imagePaths,
-    "category": category, // ✅
+    "category": category,
   };
 
   factory PasswordEntry.fromJson(Map<String, dynamic> json) => PasswordEntry(
@@ -60,6 +80,6 @@ class PasswordEntry {
     note: json["note"],
     isFavorite: json["isFavorite"] ?? false,
     imagePaths: List<String>.from(json["imagePaths"] ?? []),
-    category: json["category"], // ✅
+    category: json["category"],
   );
 }

@@ -123,12 +123,14 @@ Here are some suggested features that can improve the app further. They are divi
 - [ ] **Field-Level Encryption**
    - Encrypt sensitive fields like password and notes separately.
 
-- [ ] **Encrypted Export Format**
+- [x] **Encrypted Export Format**
    - Allow exporting vault as `.vault` file encrypted with a passphrase.
 
 - [ ] **Security Logs**
    - Track vault access times, modification history, and restore logs.
 
+- [x] **Biometric Authentication**
+   - Uses Android's builtin api to authenticate user
 ---
 
 ### 🌟 UX & UI Improvements
